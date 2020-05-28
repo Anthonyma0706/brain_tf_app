@@ -12,6 +12,7 @@ library(tidyverse)
 library(dplyr)
 library(feather)
 library(ggplot2)
+library(pheatmap)
 library(DT)
 
 source("functions.R")
@@ -19,7 +20,7 @@ source("functions.R")
 # datasets
 forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv")
 #---------------------------------------------------------------------------
-# These datasets describe TF and genes that are target of TFs doesn't have ext suffix
+# These datasets describe TF and genes that are target of TFs, don't have ext suffix
 TF_target_gene <- as_tibble(read_rds("data/joint_cortex/joint_cortex.regulon_target_info.Rds")) %>%
   select(-logo)
 unique_TF <- unique(TF_target_gene[["TF"]])
@@ -29,7 +30,7 @@ unique_TF <- unique(TF_target_gene[["TF"]])
 # a vector that contains all TFs(ext or regular) in the activity data(by cluster/cell)
 TF_active <- read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds")
 
-# import feather files later
+# import feather files later based on input$TF
 #activity_cluster <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather")
 #activity_cell <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather")
 
@@ -96,40 +97,30 @@ server <- function(input, output) {
 
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      datatable(dplyr::filter(TF_target_gene, TF %in% input$TF),
-                )
+      #datatable(dplyr::filter(TF_target_gene, TF %in% input$TF))
+      datatable(activity_data())
     })
     
     
     
     activity_data <- reactive({
       # use the feature of feather data to read certain col to optimize speed
-      cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
-                               "Cell")
-      # note that the first
-      activity_cell <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
-                                    str_subset(TF_active, input$tf)) %>%
-        add_column(cell_col) %>%
-        select(Cell, everything()) # move cell col to start
-      
-      if(ncol(activity_cell) == 3) {
-        activity_cell %>%
-          select(-contains("ext"))
-        # do sth
-      }
-      else if(ncol(activity_cell) == 2){
-        #do sth
-        activity_cell
-      }
-      else{
-        
-      }
+      activity_dataset(input$TF)
     })
     
     output$heatmap <- renderPlot({
-      
-      
-      #plot_heatmap(cortex_meta,TF_active,activity_cluster)
+      act <- tibble::column_to_rownames(activity_data(), var = "Cell")
+      pheatmap::pheatmap(t(act[1:50,]),
+                         scale = "none",
+                         border_color = NA,
+                         color = colorRampPalette(c("blue", "white", "red"))(100),
+                         main = "heatmap",
+                         #annotation_col = hm_anno$anno_row,
+                         # change the default color annotation
+                         #annotation_colors = hm_anno$side_colors, 
+                         annotation_legend = TRUE,
+                         cellwidth = 10,
+                         cellheight = 10)
       
     })
       
