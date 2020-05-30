@@ -14,6 +14,7 @@ library(feather)
 library(ggplot2)
 library(pheatmap)
 library(DT)
+library(rcytoscapejs2)
 
 source("functions.R")
 
@@ -57,7 +58,8 @@ ui <- fluidPage(
             selectInput(inputId = "TF",
                         label = "transcription factor",
                         choices = unique_TF,
-                        multiple = TRUE),
+                        multiple = TRUE,
+                        selected = c("Arx","Lef1")),
             
             # 1. table and network graph of related TF and genes
             conditionalPanel(condition = "input.tabs == 'table and network'",
@@ -76,6 +78,7 @@ ui <- fluidPage(
             
             tabPanel(title = "table and network",
                      dataTableOutput("table"),
+                     rcytoscapejsOutput("network", width = "1200px",height = "600px"),
                      value = "table and network"
             ),
             tabPanel("heatmap and clustering",
@@ -97,8 +100,16 @@ server <- function(input, output) {
 
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      #datatable(dplyr::filter(TF_target_gene, TF %in% input$TF))
-      datatable(activity_data())
+      datatable(dplyr::filter(TF_target_gene, TF %in% input$TF))
+      #datatable(activity_data())
+    })
+    output$network <- renderRcytoscapejs({
+      
+      nodeData <- create_network(input$TF)$nodes
+      edgeData <- create_network(input$TF)$edges
+      network <- createCytoscapeJsNetwork(nodeData, edgeData)
+      rcytoscapejs2(network$nodes, network$edges)
+      
     })
     
     

@@ -33,7 +33,7 @@ has_ext <- function(TF, TF_ext_data){
   nrow(is_ext)!=0
 }
 has_nothing <- function(TF, TF_ext_data){
-  !has_regular(TF, TF_ext_data) & !has_ext(TF, TF_ext_data)
+  !has_regular(TF, TF_ext_data) && !has_ext(TF, TF_ext_data)
 }
 
 tf_regular <- function(TF, TF_ext_data){
@@ -126,7 +126,36 @@ plot_heatmap <- function(cluster_info, TF_active, activity_cluster){
 } 
 
 
-#plot_heatmap(cluster_info,TF_active,activity_cluster)
+# -------------------------------------cytoscape----------------------------------------------
+# function to create network
+
+
+create_network <- function(tf){ 
+  # takes a vector input that contains user selected TFs
+  # good to visualize correlations among multiple TFs
+  TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
+  gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
+  
+  source <- TF_interest
+  target <- gene_target
+  
+  id <- c(TF_interest, gene_target)
+  name <- id
+  nodeData <- data.frame(id,name, stringsAsFactors = FALSE)
+  edgeData <- data.frame(source, target, stringsAsFactors = FALSE)
+  #nodeData$color <- c("#9d4097",
+   #                   replicate(length(TF_interest),"#4fafc6"),
+   #                   replicate(length(gene_target),"lightgrey"))
+  
+
+  return(list(nodes = nodeData,
+              edges = edgeData))
+}
+
+
+
+
+
 
 
 
