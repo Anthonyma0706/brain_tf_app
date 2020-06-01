@@ -36,7 +36,7 @@ TF_active <- read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds")
 #activity_cell <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather")
 
 # metadata
-cortex_meta <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
+metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
 
 
 #------------------------------------------------------------------------------
@@ -67,6 +67,8 @@ ui <- fluidPage(
                              actionButton("update_network", label = "Update")),
             # 2. heatmap and clustering
             conditionalPanel(condition = "input.tabs == 'heatmap and clustering'",
+                             numericInput(inputId = "num_cell", label = "number of cells to visualize",
+                                          value = 20),
                              
                              actionButton("update_heatmap", label = "Update")),
             # 3. time series plot
@@ -83,7 +85,8 @@ ui <- fluidPage(
             ),
             tabPanel("heatmap and clustering",
                      plotOutput("heatmap"),
-                     plotOutput("clustering"),
+                     plotOutput("cluster"),
+                     textOutput("tf_not_exist"),
                      
                      value = "heatmap and clustering"
             ),
@@ -116,12 +119,15 @@ server <- function(input, output) {
     
     activity_data <- reactive({
       # use the feature of feather data to read certain col to optimize speed
-      activity_dataset(input$TF)
+      create_activity_data(input$TF)
     })
     
+    
     output$heatmap <- renderPlot({
-      act <- tibble::column_to_rownames(activity_data(), var = "Cell")
-      pheatmap::pheatmap(t(act[1:50,]),
+      act <- activity_data() %>%
+        sample_n(input$num_cell) %>%
+        tibble::column_to_rownames(var = "Cell")
+      pheatmap::pheatmap(t(act),
                          scale = "none",
                          border_color = NA,
                          color = colorRampPalette(c("blue", "white", "red"))(100),
@@ -132,6 +138,17 @@ server <- function(input, output) {
                          annotation_legend = TRUE,
                          cellwidth = 10,
                          cellheight = 10)
+      
+    })
+    
+    output$cluster <- renderPlot({
+      activity_test1 <- create_activity_data("Arx")[,2][[1]]
+      # add a activity column
+      forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
+      
+      ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
+        geom_point(aes(color = activity_1))+
+        theme_bw()
       
     })
       

@@ -32,8 +32,16 @@ has_ext <- function(TF, TF_ext_data){
   is_ext <- filter(TF_ext_data, type==TF & ext=="ext")
   nrow(is_ext)!=0
 }
-has_nothing <- function(TF, TF_ext_data){
-  !has_regular(TF, TF_ext_data) && !has_ext(TF, TF_ext_data)
+tf_exist <- function(TF){
+  for(tf in TF){
+    if(has_regular(tf, TF_ext_data) || has_ext(tf, TF_ext_data)){
+    }
+    else{
+      return (tf)
+    }
+  }
+  return (TRUE)
+  #!has_regular(TF, TF_ext_data) && !has_ext(TF, TF_ext_data)
 }
 
 tf_regular <- function(TF, TF_ext_data){
@@ -43,7 +51,7 @@ tf_ext <- function(TF, TF_ext_data){
   filter(TF_ext_data, type==TF & ext=="ext")[[1,1]]
 }
 
-activity_dataset <- function(tf){ 
+create_activity_data <- function(tf){ 
   TF_activity_cell_tibble <- as_tibble(TF_active)
   TF_ext_data <- TF_and_ext(TF_activity_cell_tibble)
   # use the feature of feather data to read certain col to optimize speed
@@ -94,9 +102,9 @@ makePheatmapAnno <- function(palette, column) {
   
 }
 
-plot_heatmap <- function(cluster_info, TF_active, activity_cluster){
+plot_heatmap <- function(metadata, TF_active, activity_cluster){
   
-  colour_palette <- cluster_info %>% 
+  colour_palette <- metadata %>% 
     # use gsub to change all contents in Cluster (cluster name format)
     mutate(Cluster = gsub("_", " ", Cluster)) %>% 
     # Get two columns
@@ -143,19 +151,47 @@ create_network <- function(tf){
   name <- id
   nodeData <- data.frame(id,name, stringsAsFactors = FALSE)
   edgeData <- data.frame(source, target, stringsAsFactors = FALSE)
-  #nodeData$color <- c("#9d4097",
-   #                   replicate(length(TF_interest),"#4fafc6"),
-   #                   replicate(length(gene_target),"lightgrey"))
   
-
+  mutual_target <- edgeData %>% 
+    # a character vector that indicates the nodes that are target of multiple selected TFs
+    count(target) %>%
+    filter(n > 1 & !target %in% tf ) %>%
+    .[[1]]
+  
+  nodeData <- nodeData %>%
+    mutate(color = case_when(id %in% tf ~ "#9d4097",
+                             id %in% mutual_target ~ "#4fafc6",
+                             TRUE ~ "lightgrey"))
   return(list(nodes = nodeData,
-              edges = edgeData))
+              edges = edgeData
+              ))
 }
+tf <- c("Arx","Lef1")
+
+nodeData <- create_network(tf)$nodes
+edgeData <- create_network(tf)$edges
+network <- createCytoscapeJsNetwork(nodeData, edgeData)
+rcytoscapejs2(network$nodes, network$edges)
 
 
 
+network_data <- create_network(c("Arx","Lef1"))
 
+nodeData <- network_data$nodes
+edgeData <- network_data$edges
 
+unique_edges <- edgeData %>%
+    count(target) %>%
+    filter(n > 1 & !target %in% c("Arx","Dlx1") ) %>%
+  .[[1]]
 
+nodeData <- nodeData %>%
+  mutate(color = case_when(id %in% c("Arx","Lef1") ~ "#9d4097",
+                           id %in% unique_edges ~ "#4fafc6",
+                           TRUE ~ "lightgrey"))
+
+network <- createCytoscapeJsNetwork(nodeData, edgeData)
+
+rcytoscapejs2(network$nodes, network$edges)
 
 
