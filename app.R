@@ -15,7 +15,7 @@ library(ggplot2)
 library(pheatmap)
 library(DT)
 library(rcytoscapejs2)
-
+load("data/joint_cortex/cortex_prep.Rda")
 source("functions.R")
 
 # datasets
@@ -35,7 +35,7 @@ TF_active <- read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds")
 #activity_cluster <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather")
 #activity_cell <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather")
 
-# metadata
+# metadata, load in data_prep.R
 metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
 
 
@@ -59,7 +59,7 @@ ui <- fluidPage(
                         label = "transcription factor",
                         choices = unique_TF,
                         multiple = TRUE,
-                        selected = c("Arx","Lef1")),
+                        selected = c("Arx","Dlx1","Lef1")),
             
             # 1. table and network graph of related TF and genes
             conditionalPanel(condition = "input.tabs == 'table and network'",
@@ -68,7 +68,7 @@ ui <- fluidPage(
             # 2. heatmap and clustering
             conditionalPanel(condition = "input.tabs == 'heatmap and clustering'",
                              numericInput(inputId = "num_cell", label = "number of cells to visualize",
-                                          value = 20),
+                                          value = 50),
                              
                              actionButton("update_heatmap", label = "Update")),
             # 3. time series plot
@@ -80,17 +80,21 @@ ui <- fluidPage(
             
             tabPanel(title = "table and network",
                      dataTableOutput("table"),
+                     textOutput("desc"),
                      rcytoscapejsOutput("network", width = "1200px",height = "600px"),
+                     
                      value = "table and network"
             ),
             tabPanel("heatmap and clustering",
                      plotOutput("heatmap"),
                      plotOutput("cluster"),
-                     textOutput("tf_not_exist"),
                      
                      value = "heatmap and clustering"
             ),
             tabPanel("time series",
+                     plotOutput("timeseries1"),
+                     plotOutput("timeseries2"),
+                     plotOutput("timeseries3"),
                      value = "time series"),
             id = "tabs"
         ))
@@ -100,11 +104,16 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
-
+  # -----------------------------Tab1:table and network------------------------------------------
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
       datatable(dplyr::filter(TF_target_gene, TF %in% input$TF))
       #datatable(activity_data())
+    })
+    output$desc <- renderText({
+      text <- "Orange nodes are genes that express its own transcription factors; " %>%
+        paste("Purple nodes in the center are your input transcription factors; ") %>%
+        paste("grey nodes are other genes.")
     })
     output$network <- renderRcytoscapejs({
       
@@ -116,7 +125,7 @@ server <- function(input, output) {
     })
     
     
-    
+    # -----------------------------Tab2-------------------------------------------
     activity_data <- reactive({
       # use the feature of feather data to read certain col to optimize speed
       create_activity_data(input$TF)
@@ -148,9 +157,35 @@ server <- function(input, output) {
       
       ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
         geom_point(aes(color = activity_1))+
+        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
         theme_bw()
       
     })
+    
+    output$timeseries1 <- renderPlot({
+      req(length(input$TF)>0)
+      #tf_df <- as_tibble(rownames(activity))
+      # tf_df is loaded at beginning using data_prep.R
+      TF <- translate_tf(input$TF[1],tf_df)
+      plot_timeseries(TF,cell_metadata, activity)
+ 
+    })
+    output$timeseries2 <- renderPlot({
+      req(length(input$TF)>1)
+      TF <- translate_tf(input$TF[2],tf_df)
+      plot_timeseries(TF,cell_metadata, activity)
+      
+    })
+    output$timeseries3 <- renderPlot({
+      req(length(input$TF)>2)
+      TF <- translate_tf(input$TF[3],tf_df)
+      plot_timeseries(TF,cell_metadata, activity)
+      
+    })
+    
+    
+    
+    
       
       
     
