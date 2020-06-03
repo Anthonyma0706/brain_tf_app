@@ -17,13 +17,29 @@ More details of functions of each tab will be shown later, with major aspects: u
 
 
 ## To-do list and questions:   
-### things need to learn:  
+### things need to learn: 
+- Monday meeting:  
+  - cell_metadata for timeseries plot? I don't seem to have that data  
+  - show error of missing TFs?  
+  - in psuedotime?  
+  - ggplot sometimes show up on app html page but in plot console  
+  - change default color of the scatterplot  
+  - add explanation of the missing TF in activity_cell datasets  
+  - analyze source code of rcytoscapejs2 to see if a graph input can be produced
+  - maybe put more time in learning during hackathon  
+
+- organize data  
+  + name datasets with different prefix according to brain region  
+  + import all datasets initially before ui and server function except big datasets, feather data  
+  + put data in reactive if that involves input$TF and frequently needs to be updated
 - Keep several layouts in one page  
 - heatmap, complex heatmap  
 - maybe learn dynamic UI  
 
 ### unsolved: 
-- use a list to save all datasets?
+- Problem: cell data might be too big that I can't plot heatmap?
+- use a list to save all datasets? use event reactive ..
+- heatmap plot, a good way to organize code? use function?
 
 - Professor mentioned: static data... (contruct this in a big picture... design ability to switch 2 brain regions from the very beginning, and so on. Get a bunch of user input as a vector? then use that vector to do things accordingly and automatically, instead of hardcoding?) maybe this can apply to the theme(parameters of plot...) of the app, but what about other features?
   1. data  
@@ -80,8 +96,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Datasets
 ### 1. Metadata of cluster information
 ```{r,results='asis', message= FALSE}
-cluster_info <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
-to_display <- select(cluster_info, -Signature)
+metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
+to_display <- select(metadata, -Signature)
 knitr::kable(to_display[1:5,1:10], caption = "Table demo [1:5,1:10]")
 ```  
 
@@ -211,10 +227,125 @@ library(ggplot2)
 ![alt text](data/image/timeseries_1.png)  
 Here each dot corresponds to a cell and we can see the type from the colors.
 However, in our plot, we are displaying TF activity so the y-axis should be TF activity instead of expression level.
-```{r pressure, echo=FALSE}
+
+## First, make color palette for plotting
+```{r}
+
+colour_palette <- metadata %>% 
+  mutate(Cluster = gsub("_", " ", Cluster)) %>% 
+  separate(Cluster, into = c("Prefix", "Cluster"), sep = " ") %>% 
+  # Get two columns
+  select(Cluster, Colour) %>% 
+  distinct(Cluster, .keep_all = TRUE) %>% 
+  # Convert to vector of colours, where the first column gives the names
+  # and the second column is converted to the values
+  deframe()
+head(colour_palette)
+
+
+
+```
+load the cell metadata
+```{r}
+cell_metadata <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv") %>% 
+  select(Age = orig.ident, Cell, Cluster = ID_20190730_with_blacklist_and_refined) %>% 
+  # In this case, we remove the "prefix" of the Cluster column, so that we are
+  # simply left with the abbreviation representing the cell type, so that 
+  # we can link the cells of the same cell type across ages
+  separate(Cluster, into = c("Prefix", "Cluster"), sep = "_") %>% 
+  mutate(Age = factor(Age, levels = c("Forebrain E12.5",
+                                      "Forebrain E15.5",
+                                      "Forebrain P0",
+                                      "Forebrain P3",
+                                      "Forebrain P6"))) %>% 
+  arrange(Cell)
+head(cell_metadata)
+```
+Load the binary TF activity
+```{r}
+
+activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
+
+activity[1:3, 1:3]
+
+```
+```{r}
+# This step will change depending on the TF used
+TF <- "Dlx1 (16g)" # input_tf
+
+activity <- activity[TF, ] %>% 
+  {data.frame("TF" = .)} %>% 
+  tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
+  arrange(Cell)
 
 ```
 
+Prep a tidy data frame:
+
+```{r}
+
+# Double check all Cell names are the same / in same order
+all(cell_metadata$Cell == activity$Cell)
+
+# Add the TF activity to the new dataframe
+ribbon_df <- cell_metadata
+ribbon_df$TF <- activity$TF
+
+ribbon_df <- ribbon_df %>% 
+  filter(!grepl("BLACKLIST", Cluster))
+
+head(cell_metadata)
+
+```
+
+Make the plot:
+
+```{r, fig.width = 10, fig.height = 8}
+
+# Calculate for each cell type, the proportion of cells where the 
+# TF is active
+ribbon_df_celltype_frac <- ribbon_df %>% 
+  group_by(Age) %>% 
+  # Total cells at each age
+  mutate(total = n()) %>% 
+  group_by(Age, Cluster) %>%
+  # Proportion of TF+ cells per cluster, per age
+  mutate(frac = sum(TF > 0) / total) %>% 
+  distinct(Age, Cluster, frac) %>% 
+  ungroup()
+
+ribbon_df_cum_frac <- ribbon_df %>% 
+  group_by(Age) %>% 
+  summarize(cumfrac = sum(TF > 0) / n()) %>% 
+  ungroup()
+
+timepoints2 <- ribbon_df$Age
+clusters <- ribbon_df$Cluster
+
+df = data.frame(cluster = rep(unique(clusters), length(unique(timepoints2))),
+                stage = do.call(c, lapply(as.character(unique(timepoints2)), rep, times = length(unique(clusters)))))
+
+df$ranking = match(df$cluster, names(colours))
+df = df[order(df$stage, df$ranking),]
+
+df <- left_join(df, select(ribbon_df_celltype_frac, cluster = Cluster, stage = Age, frac)) %>% 
+  mutate(frac = replace_na(frac, 0)) %>% 
+  left_join(select(ribbon_df_cum_frac, stage = Age, cumfrac))
+
+df$xpos = match(df$stage, unique(timepoints2))
+
+df %>%
+  ggplot(aes(x = xpos, y = frac, fill = cluster)) +
+  geom_area(stat = "identity") +
+  scale_fill_manual(values = colour_palette, drop = FALSE, name = "") +
+  scale_x_continuous(breaks = seq_along(unique(df$stage)),
+                     labels = c("E12.5", "E15.5", "P0", "P3", "P6"),
+                     limits = c(1, length(unique(df$stage)))) +
+  labs(x = "age", y = "Binary activity", title = TF) +
+  guides(fill = guide_legend(ncol = 5)) +
+  theme(legend.position = "bottom")
+
+```
 Plot by **pseudotime**: cells that captured at same time will vary vastly in their stage in development progress. To avoid this problem, rather than ploting the changes according to the age, we plot as a function of progress with respect to each cell along its own trajectory, which we term "pseudotime".
 
 
