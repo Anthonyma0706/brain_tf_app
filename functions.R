@@ -204,12 +204,15 @@ create_cell_metadata <- function(metadata_part){
 # and those tf names are essential for matching data, this function use a clean tf
 # and return a tf with ext and weight type
 translate_tf <- function(tf, tf_dataframe){
-  identify_tf(tf_dataframe) %>%
-    filter(type==tf) %>%
-    .[[1,1]]
+  tf_info <- identify_tf(tf_dataframe) %>%
+    filter(type==tf) #%>%
+    #if_else(nrow(.)!=0,.[[1,1]], FALSE)
+  if(nrow(tf_info)!=0) tf_info[[1,1]]
+  else{return (FALSE)}
 }
 tf_df <- as_tibble(rownames(activity))
-  
+
+translate_tf("Barhl2",tf_df)
 
 TF <- "Arx_extended (21g)" # input_tf
 
