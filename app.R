@@ -59,7 +59,7 @@ ui <- fluidPage(
                         label = "transcription factor",
                         choices = unique_TF,
                         multiple = TRUE,
-                        selected = c("Arx","Dlx1","Lef1")),
+                        selected = c("Arx","Lef1")),
             
             # 1. table and network graph of related TF and genes
             conditionalPanel(condition = "input.tabs == 'table and network'",
@@ -167,18 +167,21 @@ server <- function(input, output) {
       #tf_df <- as_tibble(rownames(activity))
       # tf_df is loaded at beginning using data_prep.R
       TF <- translate_tf(input$TF[1],tf_df)
+      req(TF)
       plot_timeseries(TF,cell_metadata, activity)
  
     })
     output$timeseries2 <- renderPlot({
       req(length(input$TF)>1)
       TF <- translate_tf(input$TF[2],tf_df)
+      req(TF)
       plot_timeseries(TF,cell_metadata, activity)
       
     })
     output$timeseries3 <- renderPlot({
       req(length(input$TF)>2)
       TF <- translate_tf(input$TF[3],tf_df)
+      req(TF)
       plot_timeseries(TF,cell_metadata, activity)
       
     })
