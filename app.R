@@ -63,8 +63,12 @@ ui <- fluidPage(
             
             # 1. table and network graph of related TF and genes
             conditionalPanel(condition = "input.tabs == 'table and network'",
-              
-                             actionButton("update_network", label = "Update")),
+                             radioButtons("show", "Node display option",
+                                          # use the names in the vector to display
+                                          # use the character "joint_cortex" to match the path to import data
+                                          choices = c("show all nodes" = "all",
+                                                      "neglect graynodes " = "neglect"),
+                                          selected = "all")),
             # 2. heatmap and clustering
             conditionalPanel(condition = "input.tabs == 'heatmap and clustering'",
                              numericInput(inputId = "num_cell", label = "number of cells to visualize",
@@ -87,7 +91,8 @@ ui <- fluidPage(
             ),
             tabPanel("heatmap and clustering",
                      plotOutput("heatmap"),
-                     plotOutput("cluster"),
+                     plotOutput("cluster1"),
+                     plotOutput("cluster2"),
                      
                      value = "heatmap and clustering"
             ),
@@ -108,16 +113,26 @@ server <- function(input, output) {
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
       datatable(dplyr::filter(TF_target_gene, TF %in% input$TF))
-      #datatable(activity_data())
     })
+    
+    
     output$desc <- renderText({
       text <- "Orange nodes are genes that express its own transcription factors; " %>%
         paste("Purple nodes in the center are your input transcription factors; ") %>%
         paste("grey nodes are other genes.")
     })
+    nodeData <- eventReactive(input$show,{
+      if(input$show == "all"){
+        create_network(input$TF)$nodes
+      }
+      else{
+        create_network(input$TF)$nodes %>%
+          filter(color!="lightgrey")
+      }
+    })
     output$network <- renderRcytoscapejs({
       
-      nodeData <- create_network(input$TF)$nodes
+      nodeData <- nodeData()
       edgeData <- create_network(input$TF)$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
@@ -150,8 +165,26 @@ server <- function(input, output) {
       
     })
     
-    output$cluster <- renderPlot({
-      activity_test1 <- create_activity_data("Arx")[,2][[1]]
+    output$cluster1 <- renderPlot({
+      req(length(input$TF)>0)
+      activity_test1 <- activity_data()[,2][[1]] # now we only plot the first tf input,
+      # more plots could be generated later
+      #activity_test1 <- create_activity_data("Arx")[,2][[1]]
+      # add a activity column
+      forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
+      
+      ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
+        geom_point(aes(color = activity_1))+
+        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
+        theme_bw()
+      
+    })
+    
+    output$cluster2 <- renderPlot({
+      req(length(input$TF)>1)
+      activity_test1 <- activity_data()[,3][[1]] # now we only plot the first tf input,
+      # more plots could be generated later
+      #activity_test1 <- create_activity_data("Arx")[,2][[1]]
       # add a activity column
       forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
       
@@ -168,21 +201,21 @@ server <- function(input, output) {
       # tf_df is loaded at beginning using data_prep.R
       TF <- translate_tf(input$TF[1],tf_df)
       req(TF)
-      plot_timeseries(TF,cell_metadata, activity)
+      plot_timeseries(TF,cell_metadata_cortex, binary_activity)
  
     })
     output$timeseries2 <- renderPlot({
       req(length(input$TF)>1)
       TF <- translate_tf(input$TF[2],tf_df)
       req(TF)
-      plot_timeseries(TF,cell_metadata, activity)
+      plot_timeseries(TF,cell_metadata_cortex, binary_activity)
       
     })
     output$timeseries3 <- renderPlot({
       req(length(input$TF)>2)
       TF <- translate_tf(input$TF[3],tf_df)
       req(TF)
-      plot_timeseries(TF,cell_metadata, activity)
+      plot_timeseries(TF,cell_metadata_cortex, binary_activity)
       
     })
     
