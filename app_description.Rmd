@@ -16,8 +16,14 @@ output:
 More details of functions of each tab will be shown later, with major aspects: user input, output, datasets, libraries required and possible demos of plot/table
 
 
-## To-do list and questions:   
+## To-do list and questions: 
+make several updates of features:  
+  - a text title of UMAP cluster, change 'binary activity' into 'proportion of ... tf'
 ### things need to learn: 
+- Hackathon:  
+  - plotly, complex heatmap
+- problem:  
+  - error of coercing... in ribbon plot  - run debugger automatically  
 - Monday meeting:  
   - cell_metadata for timeseries plot? I don't seem to have that data  
   - show error of missing TFs?  
@@ -80,10 +86,17 @@ More details of functions of each tab will be shown later, with major aspects: u
 
 ## Library
 ```{r, message= FALSE}
+library(shiny)
 library(tidyverse)
+library(dplyr)
 library(feather)
 library(ggplot2)
-library(dplyr)
+library(pheatmap)
+library(DT)
+library(rcytoscapejs2)
+
+load("data/joint_cortex/cortex_prep.Rda")
+source("functions.R")
 
 #library(pheatmap)
 
@@ -159,14 +172,26 @@ The first column changes to cell, we use this for the UMAP cluster scatterplot i
 - **package**:  
 ```{r, message= FALSE}
 library(shiny)
-library(cyjShiny)
-library(htmlwidgets)
-library(graph)
-library(jsonlite)
+library(rcytoscapejs2)
+TF <- c("Arx","Lef1")
 ```
 
+```{r}
+# an option to neglect greycolor nodes
+unique_TF <- unique(TF_target_gene[["TF"]])
+nodeData <- create_network(TF)$nodes#%>%
+  #filter(color!="lightgrey")
+#nodeData$height <- 50
+#nodeData$width <- 50
+edgeData <- create_network(TF)$edges 
+#edgeData$color <- "#9d4097"
 
+```
 
+```{r}
+network <- createCytoscapeJsNetwork(nodeData, edgeData)
+rcytoscapejs2(network$nodes, network$edges)
+```
 
 
 ## 2. Heatmap and cluster scatterplot
