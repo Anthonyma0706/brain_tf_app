@@ -1,6 +1,7 @@
 library(tidyr)
 library(dplyr)
 library(readr)
+forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv") # for UMAP cluster
 TF_active <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
 
 TF_and_ext <- TF_active %>% 
@@ -25,13 +26,16 @@ colour_palette <- metadata %>%
   deframe()
 #head(colour_palette)
 # metadata specific for each cell, corresponding to the activity data
-cell_metadata_cortex <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
-cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex)
+cell_metadata_cortex_prep <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
+
+cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex_prep)
 # activity for cortex timeseries graph data
-activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
-tf_df <- as_tibble(rownames(activity))
-save(TF_and_ext,TF_active,metadata,tf_df,
-     cell_metadata_cortex,activity, file = "data/joint_cortex/cortex_prep.Rda")
+binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
+tf_df <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the tf with 
+# best representation of its identity in the binary_activity dataset
+
+save(forebrain_data,TF_and_ext,TF_active,metadata,tf_df,
+     cell_metadata_cortex,binary_activity, file = "data/joint_cortex/cortex_prep.Rda")
 
 
 
