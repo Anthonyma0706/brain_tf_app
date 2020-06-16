@@ -19,7 +19,7 @@ load("data/joint_cortex/cortex_prep.Rda")
 source("functions.R")
 
 # datasets
-forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv")
+
 #---------------------------------------------------------------------------
 # These datasets describe TF and genes that are target of TFs, don't have ext suffix
 TF_target_gene <- as_tibble(read_rds("data/joint_cortex/joint_cortex.regulon_target_info.Rds")) %>%
@@ -29,14 +29,14 @@ unique_TF <- unique(TF_target_gene[["TF"]])
 #---------------------------------------------------------------------------
 # TF has ext and weight suffix in these datas
 # a vector that contains all TFs(ext or regular) in the activity data(by cluster/cell)
-TF_active <- read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds")
+#TF_active <- read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds")
 
 # import feather files later based on input$TF
 #activity_cluster <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather")
 #activity_cell <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather")
 
 # metadata, load in data_prep.R
-metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
+#metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
 
 
 #------------------------------------------------------------------------------
@@ -195,6 +195,7 @@ server <- function(input, output) {
       
     })
     
+    # --------------------------------------Tab3: timeseries-------------------------------------------
     output$timeseries1 <- renderPlot({
       req(length(input$TF)>0)
       #tf_df <- as_tibble(rownames(activity))
