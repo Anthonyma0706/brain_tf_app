@@ -1,12 +1,22 @@
 {
 
-"joint_cortex": [
+"joint_cortex": [ 
+   {
+       "file": "cortex_prep.Rda",
+       "path": "data/joint_cortex/cortex_prep.Rda",
+       "description": "Rda file containing datasets generated in data_prep.R, to be loaded at the beginning of app.R to optimize run-time speed and efficiency. ",
+       "contents": "forebrain_data,TF_and_ext,TF_active,metadata,tf_df, cell_metadata_cortex,binary_activity data",
+       "script": "data_prep.R"
+        
+     },
      
      {
        "file": "Forebrain_join.2D.tsv",
        "path": "",
        "description": "Information of all forebrain cells data, their corresponding clusters and UMAP/tSNE/PCA value can be used to plot the clustering scatterplot",
-       "contents": "Data frame with columns, 'Cell' 'Sample' 'Sample_cluster', 'UMAP1/2' and so on."     },
+       "contents": "Data frame with columns, 'Cell' 'Sample' 'Sample_cluster', 'UMAP1/2' and so on."     
+        
+     },
      {
        
        "file": "joint_cortex.embedding_and_genes.feather",
