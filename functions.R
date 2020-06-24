@@ -1,4 +1,4 @@
-
+load("data/joint_cortex/cortex_prep.Rda")
 # --------------------------Tab1-cytoscape network visualization----------------------------------------------
 # function to create network
 
@@ -31,6 +31,8 @@ create_network <- function(tf){
   name <- id
   nodeData <- data.frame(id,name, stringsAsFactors = FALSE)
   edgeData <- data.frame(source, target, stringsAsFactors = FALSE)
+  
+  #unique_TF <- unique(TF_target_gene[["TF"]])
   
   mutual_target <- edgeData %>% 
     # a character vector that indicates the nodes that are target of multiple selected TFs
@@ -74,7 +76,7 @@ create_network <- function(tf){
 #' 
 #' @examples 
 #' TF_active <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
-#' TF_ext_data <- identify_tf(TF_active)
+#' TF_and_ext <- identify_tf(TF_active)
 #' 
 identify_tf <- function(TF_name_activity_tibble){
   TF_name_activity_tibble %>% 
@@ -91,29 +93,29 @@ identify_tf <- function(TF_name_activity_tibble){
 #' Boolean functions that determine the identity of TF data in the activity datasets
 #'
 #' @param TF character vector, containing one or more TF names
-#' @param TF_ext_data The dataframe/tibble generated using identify_tf, that has three cols:
+#' @param TF_and_ext The dataframe/tibble generated using identify_tf, that has three cols:
 #' name, type, ext
 #'
 #' @return A boolean that checks if the datasets has the regular/ext data of that tf input
 #'
 #' @examples
 #' 
-#' has_regular("Arx", TF_ext_data) # False
-#' has_ext("Arx", TF_ext_data) # True
+#' has_regular("Arx", TF_and_ext) # False
+#' has_ext("Arx", TF_and_ext) # True
 #' 
 #' 
-has_regular <- function(TF, TF_ext_data){
-  has_regular <- filter(TF_ext_data, type==TF & ext==TF)
+has_regular <- function(TF, TF_and_ext){
+  has_regular <- filter(TF_and_ext, type==TF & ext==TF)
   nrow(has_regular)!=0 #boolean
 }
-has_ext <- function(TF, TF_ext_data){
-  is_ext <- filter(TF_ext_data, type==TF & ext=="ext")
+has_ext <- function(TF, TF_and_ext){
+  is_ext <- filter(TF_and_ext, type==TF & ext=="ext")
   nrow(is_ext)!=0
 }
 
 #' tf_exist
 #' 
-#' This function also uses TF_ext_data, loaded in data_prep.R, can also generate using identify_tf
+#' This function also uses TF_and_ext, loaded in data_prep.R, can also generate using identify_tf
 #' 
 #' @param TF character vector, containing one or more TF names
 #'
@@ -122,14 +124,14 @@ has_ext <- function(TF, TF_ext_data){
 #'
 #' @examples 
 #' TF_active <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
-#' TF_ext_data <- identify_tf(TF_active)
+#' TF_and_ext <- identify_tf(TF_active)
 #' TF <- "Arx"
 #' tf_exist(TF)
 #' 
 #' 
 tf_exist <- function(TF){
   for(tf in TF){
-    if(has_regular(tf, TF_ext_data) || has_ext(tf, TF_ext_data)){}
+    if(has_regular(tf, TF_and_ext) || has_ext(tf, TF_and_ext)){}
     else{return (tf)}
   }
   return (TRUE)
@@ -140,7 +142,7 @@ tf_exist <- function(TF){
 #' tf_regular, tf_ext
 #'
 #' @param TF character vector, containing one or more TF names
-#' @param TF_ext_data The dataframe/tibble generated using identify_tf, that has three cols:
+#' @param TF_and_ext The dataframe/tibble generated using identify_tf, that has three cols:
 #' name, type, ext
 #'
 #' @return The best represented tf with suffix, still using the same logic: 
@@ -149,15 +151,15 @@ tf_exist <- function(TF){
 #'
 #' @examples
 #' TF_active <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
-#' TF_ext_data <- identify_tf(TF_active)
+#' TF_and_ext <- identify_tf(TF_active)
 #' TF <- c("Arx","Lef1")
-#' tf_regular(TF, TF_ext_data)
+#' tf_regular(TF, TF_and_ext)
 #' 
-tf_regular <- function(TF, TF_ext_data){
-  filter(TF_ext_data, type==TF & ext==TF)[[1,1]]
+tf_regular <- function(TF, TF_and_ext){
+  filter(TF_and_ext, type==TF & ext==TF)[[1,1]]
 }
-tf_ext <- function(TF, TF_ext_data){
-  filter(TF_ext_data, type==TF & ext=="ext")[[1,1]]
+tf_ext <- function(TF, TF_and_ext){
+  filter(TF_and_ext, type==TF & ext=="ext")[[1,1]]
 }
 
 # --------------------------------Tab2 data--------------------------------
@@ -167,40 +169,56 @@ tf_ext <- function(TF, TF_ext_data){
 # Dogma: if we have regular TF type, we use that data; if we only have ext data, use ext
 # if we have no data related to this tf, we will either give an error message or do nothing
 
-#' create activity data
+#' create Cell/Cluster activity data
 #'
 #' @param tf character vector, containing one or more TF names
-#'
+#' @param method either by Cell --> use cell data, or by cluster --> use cluster data, 
+#' this should be a string indicating the column name
 #' @return a dataframe that has a column containing all the cell names and columns of the input tfs
 #' the corresponding activity
 #' data value (NES) 
 #'
 #' @examples
-#' create_activity_data("Arx")
-#' 
-create_activity_data <- function(tf){ 
+#' create_activity_data("Arx", "Cell")
+#' create_activity_data("Arx", "Cluster")
+create_activity_data <- function(tf, method){ 
   # use the feature of feather data to read certain col to optimize speed
-  cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
-                           "Cell")
+  if(str_detect(method,"(?i)Cell")){
+    cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
+                             "Cell")
+  }
+  else if(str_detect(method,"(?i)Cluster")){
+    cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather",
+                             "Cluster")
+  }
+  else{return("Wrong usage")}
+  
   # add certain tf activity data to the Cell column
   activity_cell <- cell_col
   for(TF in tf){ # tf is input tf list, could contain many tfs
     tf_to_read <- TF
-    if(has_regular(TF, TF_ext_data)){
-      tf_to_read <- tf_regular(TF,TF_ext_data) # a helper to read the corresponding data
+    if(has_regular(TF, TF_and_ext)){
+      tf_to_read <- tf_regular(TF,TF_and_ext) # a helper to read the corresponding data
     }
-    else if(has_ext(TF, TF_ext_data)){
-      tf_to_read <- tf_ext(TF,TF_ext_data)
+    else if(has_ext(TF, TF_and_ext)){
+      tf_to_read <- tf_ext(TF,TF_and_ext)
     }
     else{
       next # means we don't have that data, we jump over it and do thing
     }
-    col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
-                        tf_to_read)
+    if(str_detect(method,"(?i)Cell")){
+      col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
+                          tf_to_read)
+    }
+    else{
+      col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather",
+                          tf_to_read)
+    }
+    
     activity_cell <- add_column(activity_cell,col)
   }
   activity_cell %>%
-    select(Cell, everything()) # move cell col to start
+    select(method, everything()) # move cell col to start
 }
 
 
@@ -225,6 +243,8 @@ makePheatmapAnno <- function(palette, column) {
               side_colors = side_colors))
   
 }
+
+# not used for now
 
 plot_heatmap <- function(metadata, TF_active, activity_cluster){
   
