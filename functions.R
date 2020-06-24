@@ -181,6 +181,7 @@ tf_ext <- function(TF, TF_and_ext){
 #' @examples
 #' create_activity_data("Arx", "Cell")
 #' create_activity_data("Arx", "Cluster")
+#' create_activity_data("Arx", "Abc") # --> "Wrong usage", please use either Cell/Cluster
 create_activity_data <- function(tf, method){ 
   # use the feature of feather data to read certain col to optimize speed
   if(str_detect(method,"(?i)Cell")){
