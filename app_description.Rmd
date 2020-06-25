@@ -103,6 +103,7 @@ source("functions.R")
 ```
 
 ```{r setup, include=FALSE}
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -207,7 +208,147 @@ library(pheatmap)
 - output: 
   1. A heatmap that, given a specific TF, we filter the activity_cluster datasets with this TF then display a heatmap that shows the level of activity featured by NES(score). You will see a gradient of color which makes a great straightforwad visualization.  
   The x-axis correspond to each cluster.  
+  
+  
+### Option 1: plot by Cluster
+```{r}
+
+colour_palette <- metadata %>% 
+  # use gsub to change all contents in Cluster (cluster name format)
+  mutate(Cluster = gsub("_", " ", Cluster)) %>% 
+  # Get two columns
+  select(Cluster, Colour) %>% 
+  # Convert to vector of colours, where the first column gives the names
+  # and the second column is converted to the values
+  deframe() # VECTOR , not data frame 
+
+# A helper function to prepare a dataframe to annotate the heatmap with colours
+hm_anno <- makePheatmapAnno(colour_palette, "Cluster")
+
+act_cluster <- create_activity_data(c("E2f1","Atf3"), "Cluster") %>%
+  sample_n(30) %>%
+  tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
+
+pheatmap::pheatmap(t(act_cluster),
+                   #show_colnames = FALSE,
+                   scale = "none",
+                   border_color = NA,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   main = "Plot by Clusters",
+                   annotation_col = hm_anno$anno_row,
+                   # change the default color annotation
+                   annotation_colors = hm_anno$side_colors, 
+                   annotation_legend = ,
+                   cellwidth = 10,
+                   cellheight = 10)
+act_cluster
+t(act_cluster)
+hm_anno$anno_row
+length(hm_anno$side_colors[[1]])
+```
   ![alt text](data/image/heatmap_demo3.png)  
+### Option 2: plot by Cell, no colour palette
+```{r}
+colour_palette <- metadata %>% 
+  # use gsub to change all contents in Cluster (cluster name format)
+  mutate(Cluster = gsub("_", " ", Cluster)) %>% 
+  # Get two columns
+  select(Cluster, Colour) %>% 
+  # Convert to vector of colours, where the first column gives the names
+  # and the second column is converted to the values
+  deframe() # VECTOR , not data frame 
+
+palette <- colour_palette[unique(names(colour_palette))] # with unique names
+  # Make dataframe, retrieve the data frame
+anno_row <- data.frame(cluster = names(palette))
+names(anno_row) <- "Cluster"  # just change the name ...
+rownames(anno_row) <- anno_row[[1]]
+
+head(palette)
+head(anno_row)
+```
+
+```{r}
+# Make list containing colours
+side_colors <- list(cluster = palette)
+names(side_colors) <- "Cluster" # just change the name ...
+
+# A helper function to prepare a dataframe to annotate the heatmap with colours
+hm_anno <- makePheatmapAnno(colour_palette, "Cluster")
+
+head(side_colors)
+```
+### Pheatmap recap: how to make annotation_col or row  
+```{r}
+library(pheatmap)
+
+# Create test matrix
+test = matrix(rnorm(200), 20, 10)
+test[1:10, seq(1, 10, 2)] = test[1:10, seq(1, 10, 2)] + 3
+test[11:20, seq(2, 10, 2)] = test[11:20, seq(2, 10, 2)] + 2
+test[15:20, seq(2, 10, 2)] = test[15:20, seq(2, 10, 2)] + 4
+colnames(test) = paste("Test", 1:10, sep = "")
+rownames(test) = paste("Gene", 1:20, sep = "")
+# Generate annotations for rows and columns
+annotation_col = data.frame(
+                    CellType = factor(rep(c("CT1", "CT2"), 5)), 
+                    Time = 1:5
+                )
+rownames(annotation_col) = paste("Test", 1:10, sep = "")
+
+annotation_row = data.frame(
+                    GeneClass = factor(rep(c("Path1", "Path2", "Path3"), c(10, 4, 6)))
+                )
+rownames(annotation_row) = paste("Gene", 1:20, sep = "")
+
+# Display row and color annotations
+# Draw heatmaps
+pheatmap(test)
+# pheatmap(test, kmeans_k = 2)
+# pheatmap(test, scale = "row", clustering_distance_rows = "correlation")
+# pheatmap(test, color = colorRampPalette(c("navy", "white", "firebrick3"))(50))
+# pheatmap(test, cluster_row = FALSE)
+# pheatmap(test, legend = FALSE)
+pheatmap(test, annotation_col = annotation_col)
+pheatmap(test, annotation_col = annotation_col, annotation_legend = FALSE)
+pheatmap(test, annotation_col = annotation_col, annotation_row = annotation_row)
+
+# test
+ annotation_col
+# annotation_row
+```
+
+```{r}
+#,"Atf3","Dlx1","Olig2","Lef1","Hes6",
+act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell") %>%
+  mutate(Cluster = gsub("_"," ",forebrain_data[["Sample_cluster"]])) %>%
+  filter(!grepl("BLACKLIST", Cluster)) %>%
+   sample_n(300) %>%
+  tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
+#factor <- factor(select(act_cell, Cluster))
+anno_row_cell <- select(act_cell, Cluster)
+#anno_row_cell$Cluster <- as.factor(anno_row_cell$Cluster)
+
+act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
+  #sample_n(30)
+
+pheatmap::pheatmap(t(act_cell),
+                   show_colnames = FALSE,
+                   scale = "none",
+                   border_color = NA,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   main = "Plot by Cells",
+                   annotation_col = anno_row_cell,
+                   # change the default color annotation
+                   annotation_colors = hm_anno$side_colors, 
+                   annotation_legend = TRUE,
+                   cellwidth = 2,
+                   cellheight = 10)
+# anno_row_cell
+# act_cell
+# hm_anno$side_colors
+``` 
+ 
   
   2. A scatterplot that plots a scatter plot using UMAP1 and UMAP2 in forebrain_data, then given a user input of TF, using the 6. Activity per cell: activity_cell, change the color of each cell to reflect their TF activity, based on the user input of TF
   ![alt text](data/image/UMAP_demo1.png)  
