@@ -22,6 +22,20 @@ TF_and_ext <- identify_tf(TF_active)
 # make color palette
 metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
 
+# color palette for heatmap
+colour_palette_cluster <- metadata %>% 
+  # use gsub to change all contents in Cluster (cluster name format)
+  mutate(Cluster = gsub("_", " ", Cluster)) %>% 
+  # Get two columns
+  select(Cluster, Colour) %>% 
+  # Convert to vector of colours, where the first column gives the names
+  # and the second column is converted to the values
+  deframe() # VECTOR , not data frame 
+
+# A helper function to prepare a dataframe to annotate the heatmap with colours
+hm_anno <- makePheatmapAnno(colour_palette_cluster, "Cluster")
+
+# color palette for timeseries plot, tab3
 colour_palette <- metadata %>% 
   mutate(Cluster = gsub("_", " ", Cluster)) %>% 
   separate(Cluster, into = c("Prefix", "Cluster"), sep = " ") %>% 
@@ -31,7 +45,9 @@ colour_palette <- metadata %>%
   # Convert to vector of colours, where the first column gives the names
   # and the second column is converted to the values
   deframe()
-#head(colour_palette)
+
+
+
 # metadata specific for each cell, corresponding to the activity data
 cell_metadata_cortex_prep <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
 
@@ -42,6 +58,7 @@ tf_df <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the
 # best representation of its identity in the binary_activity dataset
 
 save(forebrain_data,TF_and_ext,TF_active,metadata,tf_df,TF_target_gene, unique_TF,
+     colour_palette_cluster,hm_anno,colour_palette,
      cell_metadata_cortex,binary_activity, file = "data/joint_cortex/cortex_prep.Rda")
 
 
