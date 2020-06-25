@@ -21,10 +21,7 @@ source("functions.R")
 # datasets
 
 #---------------------------------------------------------------------------
-# These datasets describe TF and genes that are target of TFs, don't have ext suffix
-TF_target_gene <- as_tibble(read_rds("data/joint_cortex/joint_cortex.regulon_target_info.Rds")) %>%
-  select(-logo)
-unique_TF <- unique(TF_target_gene[["TF"]])
+
 
 #---------------------------------------------------------------------------
 # TF has ext and weight suffix in these datas
@@ -55,6 +52,7 @@ ui <- fluidPage(
                                      "Pons" = "joint_pons"),
                          selected = "Forebrain"),
             
+            actionButton("update_tf", label = "Update transcription factors to see the plots"),
             selectInput(inputId = "TF",
                         label = "transcription factor",
                         choices = unique_TF,
@@ -67,18 +65,20 @@ ui <- fluidPage(
                                           # use the names in the vector to display
                                           # use the character "joint_cortex" to match the path to import data
                                           choices = c("show all nodes" = "all",
-                                                      "neglect graynodes " = "neglect"),
-                                          selected = "all")),
+                                                      "neglect graynodes " = "neglect"))#,
+                             #actionButton("update_graph", label = "See the network graph")
+                             ),
             # 2. heatmap and clustering
             conditionalPanel(condition = "input.tabs == 'heatmap and clustering'",
                              numericInput(inputId = "num_cell", label = "number of cells to visualize",
                                           value = 50),
-                             
-                             actionButton("update_heatmap", label = "Update")),
+                             checkboxGroupInput("method", "Plot by cluster or cells",
+                                   choices = c("cluster" = "Cluster",
+                                               "cell" = "Cell")             
+    
+                             )),
             # 3. time series plot
-            conditionalPanel(condition = "input.tabs == 'time series'",
-                            
-                             actionButton("update_timeseries", label = "Update"))
+            conditionalPanel(condition = "input.tabs == 'time series'")
         ),
         mainPanel(tabsetPanel(
             
@@ -90,7 +90,8 @@ ui <- fluidPage(
                      value = "table and network"
             ),
             tabPanel("heatmap and clustering",
-                     plotOutput("heatmap"),
+                     plotOutput("heatmap_cell"),
+                     plotOutput("heatmap_cluster"),
                      plotOutput("cluster1"),
                      plotOutput("cluster2"),
                      
@@ -109,10 +110,13 @@ ui <- fluidPage(
 )
 
 server <- function(input, output) {
+  
+  input_tf <- eventReactive(input$update_tf,{input$TF})
+  
   # -----------------------------Tab1:table and network------------------------------------------
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      datatable(dplyr::filter(TF_target_gene, TF %in% input$TF))
+      datatable(dplyr::filter(TF_target_gene, TF %in% input_tf()))
     })
     
     
@@ -122,52 +126,93 @@ server <- function(input, output) {
         paste("grey nodes are other genes.")
     })
     nodeData <- eventReactive(input$show,{
+      req(input$show)
       if(input$show == "all"){
-        create_network(input$TF)$nodes
+        create_network(input_tf())$nodes
       }
       else{
-        create_network(input$TF)$nodes %>%
+        create_network(input_tf())$nodes %>%
           filter(color!="lightgrey")
       }
     })
     output$network <- renderRcytoscapejs({
       
       nodeData <- nodeData()
-      edgeData <- create_network(input$TF)$edges
+      edgeData <- create_network(input_tf())$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
-      
+ 
     })
     
     
     # -----------------------------Tab2-------------------------------------------
-    activity_data <- reactive({
-      # use the feature of feather data to read certain col to optimize speed
-      create_activity_data(input$TF)
+    # activity_data_heatmap <- reactive({
+    #   # use the feature of feather data to read certain col to optimize speed
+    #   create_activity_data(input_tf(), input$method)
+    # })
+    # eventReactive(input$update_heatmap, {
+    #   
+    # })
+    
+    output$heatmap_cell <- renderPlot({
+      req("Cell" %in% input$method)
+        act_cell <- create_activity_data(input_tf(), "Cell") %>%
+          mutate(Cluster = gsub("_"," ",forebrain_data[["Sample_cluster"]])) %>%
+          filter(!grepl("BLACKLIST", Cluster)) %>% # filter out bad samples
+          sample_n(300) %>%
+          tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
+        anno_row_cell <- select(act_cell, Cluster)
+        #anno_row_cell$Cluster <- as.factor(anno_row_cell$Cluster)
+        act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
+       
+        pheatmap::pheatmap(t(act_cell),
+                           show_colnames = FALSE,
+                           scale = "none",
+                           border_color = NA,
+                           color = colorRampPalette(c("blue", "white", "red"))(100),
+                           main = "Plot by Cells",
+                           annotation_col = anno_row_cell,
+                           # change the default color annotation
+                           annotation_colors = hm_anno$side_colors, 
+                           annotation_legend = TRUE,
+                           cellwidth = 2,
+                           cellheight = 10)
     })
     
-    
-    output$heatmap <- renderPlot({
-      act <- activity_data() %>%
-        sample_n(input$num_cell) %>%
-        tibble::column_to_rownames(var = "Cell")
-      pheatmap::pheatmap(t(act),
-                         scale = "none",
-                         border_color = NA,
-                         color = colorRampPalette(c("blue", "white", "red"))(100),
-                         main = "heatmap",
-                         #annotation_col = hm_anno$anno_row,
-                         # change the default color annotation
-                         #annotation_colors = hm_anno$side_colors, 
-                         annotation_legend = TRUE,
-                         cellwidth = 10,
-                         cellheight = 10)
+    output$heatmap_cluster <- renderPlot({
+      req("Cluster" %in% input$method)
+        act <- create_activity_data(input_tf(), "Cluster") %>%
+          sample_n(30) %>%
+          tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
+        
+        pheatmap::pheatmap(t(act),
+                           #show_colnames = FALSE,
+                           scale = "none",
+                           border_color = NA,
+                           color = colorRampPalette(c("blue", "white", "red"))(100),
+                           main = "Plot by Clusters",
+                           annotation_col = hm_anno$anno_row,
+                           # change the default color annotation
+                           annotation_colors = hm_anno$side_colors, 
+                           annotation_legend = TRUE,
+                           cellwidth = 10,
+                           cellheight = 10)
       
+      
+      
+      
+    })
+  
+    # The cluster scatterplot is always plot by cells, so we use an independent reactive
+    # value for this plot
+    activity_data_cluster <- reactive({
+      # use the feature of feather data to read certain col to optimize speed
+      create_activity_data(input_tf(), "Cell")
     })
     
     output$cluster1 <- renderPlot({
-      req(length(input$TF)>0)
-      activity_test1 <- activity_data()[,2][[1]] # now we only plot the first tf input,
+      req(length(input_tf())>0)
+      activity_test1 <- activity_data_cluster()[,2][[1]] # now we only plot the first tf input,
       # more plots could be generated later
       #activity_test1 <- create_activity_data("Arx")[,2][[1]]
       # add a activity column
@@ -181,8 +226,8 @@ server <- function(input, output) {
     })
     
     output$cluster2 <- renderPlot({
-      req(length(input$TF)>1)
-      activity_test1 <- activity_data()[,3][[1]] # now we only plot the first tf input,
+      req(length(input_tf())>1)
+      activity_test1 <- activity_data_cluster()[,3][[1]] # now we only plot the first tf input,
       # more plots could be generated later
       #activity_test1 <- create_activity_data("Arx")[,2][[1]]
       # add a activity column
@@ -195,26 +240,28 @@ server <- function(input, output) {
       
     })
     
+    
+    
     # --------------------------------------Tab3: timeseries-------------------------------------------
     output$timeseries1 <- renderPlot({
-      req(length(input$TF)>0)
+      req(length(input_tf())>0)
       #tf_df <- as_tibble(rownames(activity))
       # tf_df is loaded at beginning using data_prep.R
-      TF <- translate_tf(input$TF[1],tf_df)
+      TF <- translate_tf(input_tf()[1],tf_df)
       req(TF)
       plot_timeseries(TF,cell_metadata_cortex, binary_activity)
  
     })
     output$timeseries2 <- renderPlot({
-      req(length(input$TF)>1)
-      TF <- translate_tf(input$TF[2],tf_df)
+      req(length(input_tf())>1)
+      TF <- translate_tf(input_tf()[2],tf_df)
       req(TF)
       plot_timeseries(TF,cell_metadata_cortex, binary_activity)
       
     })
     output$timeseries3 <- renderPlot({
-      req(length(input$TF)>2)
-      TF <- translate_tf(input$TF[3],tf_df)
+      req(length(input_tf())>2)
+      TF <- translate_tf(input_tf()[3],tf_df)
       req(TF)
       plot_timeseries(TF,cell_metadata_cortex, binary_activity)
       
