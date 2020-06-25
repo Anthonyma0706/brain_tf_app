@@ -170,7 +170,10 @@ tf_ext <- function(TF, TF_and_ext){
 # if we have no data related to this tf, we will either give an error message or do nothing
 
 #' create Cell/Cluster activity data
-#'
+#' 
+#' Make activity data used in tab2 by either Cell or Cluster, the method would be provided by
+#' user's input in Shiny app
+#' 
 #' @param tf character vector, containing one or more TF names
 #' @param method either by Cell --> use cell data, or by cluster --> use cluster data, 
 #' this should be a string indicating the column name
@@ -184,7 +187,7 @@ tf_ext <- function(TF, TF_and_ext){
 #' create_activity_data("Arx", "Abc") # --> "Wrong usage", please use either Cell/Cluster
 create_activity_data <- function(tf, method){ 
   # use the feature of feather data to read certain col to optimize speed
-  if(str_detect(method,"(?i)Cell")){
+  if(str_detect(method,"(?i)Cell")){ # case-insensitive checking
     cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
                              "Cell")
   }
@@ -195,7 +198,7 @@ create_activity_data <- function(tf, method){
   else{return("Wrong usage")}
   
   # add certain tf activity data to the Cell column
-  activity_cell <- cell_col
+  activity <- cell_col
   for(TF in tf){ # tf is input tf list, could contain many tfs
     tf_to_read <- TF
     if(has_regular(TF, TF_and_ext)){
@@ -216,9 +219,9 @@ create_activity_data <- function(tf, method){
                           tf_to_read)
     }
     
-    activity_cell <- add_column(activity_cell,col)
+    activity <- add_column(activity,col)
   }
-  activity_cell %>%
+  activity %>%
     select(method, everything()) # move cell col to start
 }
 
