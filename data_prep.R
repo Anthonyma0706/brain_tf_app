@@ -65,39 +65,77 @@ tf_df <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the
 # ----------------------------------Pon data-------------------------------------------------------
 
 pon_data <- read_tsv("data/joint_pons/Pons_join.2D.tsv") # for UMAP cluster
-TF_active_pon <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
+TF_active_pon <- as_tibble(read_rds("data/joint_pons/joint_pons.active_regulons.Rds"))
 
 # These datasets describe TF and genes that are target of TFs, don't have ext suffix
-TF_target_gene_pon <- as_tibble(read_rds("data/joint_pons/joint_cortex.regulon_target_info.Rds")) %>%
+TF_target_gene_pon <- as_tibble(read_rds("data/joint_pons/joint_pons.regulon_target_info.Rds")) %>%
   select(-logo)
-unique_TF_pon <- unique(TF_target_gene[["TF"]])
+unique_TF_pon <- unique(TF_target_gene_pon[["TF"]])
 
 
 TF_and_ext_pon <- identify_tf(TF_active_pon)
-
-
 # metadata specific for each cell, corresponding to the activity data
 cell_metadata_pon_prep <- read_tsv("data/joint_pons/joint_pons.metadata.tsv")
 
 cell_metadata_pon <- create_cell_metadata_pon(cell_metadata_pon_prep)
 # activity for cortex timeseries graph data
 binary_activity_pon <- readRDS("data/joint_pons/joint_pons.binaryRegulonActivity_nonDupl.Rds")
-tf_df_pon <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the tf with 
+tf_df_pon <- as_tibble(rownames(binary_activity_pon)) #a dataframe that contains all the tf with 
 # best representation of its identity in the binary_activity dataset
 
 
-save(# ---------------------------cortex data-----------------------------
-  forebrain_data,TF_and_ext,TF_active,metadata,tf_df,TF_target_gene, unique_TF,
-     colour_palette_cluster,hm_anno,colour_palette,
-     cell_metadata_cortex,binary_activity, 
-     
-     # -----------------------------pon data-----------------------------
-     pon_data,TF_and_ext_pon,TF_active_pon,TF_target_gene_pon, unique_TF_pon,
-     cell_metadata_pon,binary_activity_pon,tf_df_pon, 
+# save(# ---------------------------cortex data-----------------------------
+#   forebrain_data,TF_and_ext,TF_active,metadata,tf_df,TF_target_gene, unique_TF,
+#      colour_palette_cluster,hm_anno,colour_palette,
+#      cell_metadata_cortex,binary_activity, 
+#      
+#      # -----------------------------pon data-----------------------------
+#      pon_data,TF_and_ext_pon,TF_active_pon,TF_target_gene_pon, unique_TF_pon,
+#      cell_metadata_pon,binary_activity_pon,tf_df_pon, 
+# 
+#      file = "data/joint_cortex/cortex_prep.Rda")
 
-     file = "data/joint_cortex/cortex_prep.Rda")
 
+# data_common <- list(
+#   "metadata" = metadata,
+#   "colour_palette_cluster" = colour_palette_cluster,
+#   hm_anno,colour_palette
+#   
+# )
 
+# make two lists containing same name (will be assigned to a reactive list),
+# then we can use the same name to code
+data_cortex <- list(
+  "overall"  = forebrain_data,
+  "TF_and_ext" = TF_and_ext,
+  "TF_target_gene" = TF_target_gene,
+  "unique_TF" = unique_TF,
+  "TF_active" = TF_active,
+  "tf_df" = tf_df,
+  "cell_metadata" = cell_metadata_cortex,
+  "binary_activity" = binary_activity
+
+)
+
+data_pons <- list(
+  "overall" = pon_data,
+  "TF_and_ext" = TF_and_ext_pon,
+  "TF_target_gene" = TF_target_gene_pon,
+  "unique_TF" = unique_TF_pon,
+  "TF_active" = TF_active_pon,
+  "tf_df" = tf_df_pon,
+  "cell_metadata" = cell_metadata_pon,
+  "binary_activity" = binary_activity_pon
+  
+)
+# ---------------------------cortex data-----------------------------
+save(data_cortex, file = "data/joint_cortex/cortex_prep.Rda")
+
+# -----------------------------pon data-----------------------------
+save(data_cortex, file = "data/joint_pons/pons_prep.Rda")
+
+save(metadata,colour_palette_cluster,
+     hm_anno,colour_palette, file = "data/joint_cortex/common_prep.Rda")
 
 
 
