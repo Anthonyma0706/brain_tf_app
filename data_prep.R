@@ -1,6 +1,7 @@
 library(tidyr)
 library(dplyr)
 library(readr)
+# ———————————————————————————————————Cortex data————————————————————————————————————————
 forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv") # for UMAP cluster
 TF_active <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
 
@@ -57,9 +58,39 @@ binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity
 tf_df <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the tf with 
 # best representation of its identity in the binary_activity dataset
 
+
+# ----------------------------------Pon data-------------------------------------------------------
+pon_data <- read_tsv("data/joint_pons/Pons_join.2D.tsv") # for UMAP cluster
+TF_active_pon <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
+
+# These datasets describe TF and genes that are target of TFs, don't have ext suffix
+TF_target_gene_pon <- as_tibble(read_rds("data/joint_pons/joint_cortex.regulon_target_info.Rds")) %>%
+  select(-logo)
+unique_TF_pon <- unique(TF_target_gene[["TF"]])
+
+
+TF_and_ext_pon <- identify_tf(TF_active_pon)
+
+
+# metadata specific for each cell, corresponding to the activity data
+cell_metadata_pon_prep <- read_tsv("data/joint_pons/joint_pons.metadata.tsv")
+
+cell_metadata_pon <- create_cell_metadata_pon(cell_metadata_pon_prep)
+# activity for cortex timeseries graph data
+binary_activity_pon <- readRDS("data/joint_pons/joint_pons.binaryRegulonActivity_nonDupl.Rds")
+tf_df_pon <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the tf with 
+# best representation of its identity in the binary_activity dataset
+
+
 save(forebrain_data,TF_and_ext,TF_active,metadata,tf_df,TF_target_gene, unique_TF,
      colour_palette_cluster,hm_anno,colour_palette,
-     cell_metadata_cortex,binary_activity, file = "data/joint_cortex/cortex_prep.Rda")
+     cell_metadata_cortex,binary_activity, 
+     
+     # -----------------------------pon data-----------------------------
+     pon_data,TF_and_ext_pon,TF_active_pon,TF_target_gene_pon, unique_TF_pon,
+     cell_metadata_pon,binary_activity_pon,tf_df_pon, 
+
+     file = "data/joint_cortex/cortex_prep.Rda")
 
 
 
