@@ -1,4 +1,4 @@
-load("data/joint_cortex/cortex_prep.Rda")
+#load("data/joint_cortex/cortex_prep.Rda")
 # --------------------------Tab1-cytoscape network visualization----------------------------------------------
 # function to create network
 
@@ -118,6 +118,7 @@ has_ext <- function(TF, TF_and_ext){
 #' This function also uses TF_and_ext, loaded in data_prep.R, can also generate using identify_tf
 #' 
 #' @param TF character vector, containing one or more TF names
+#' @param TF_and_ext TF_and_ext data, specific for cortex/pons
 #'
 #' @return if the dataset doesn't have data for a tf input, it returns the tf input name; if it has them
 #' all, this returns TRUE
@@ -129,10 +130,10 @@ has_ext <- function(TF, TF_and_ext){
 #' tf_exist(TF)
 #' 
 #' 
-tf_exist <- function(TF){
+tf_exist <- function(TF, TF_and_ext){
   for(tf in TF){
     if(has_regular(tf, TF_and_ext) || has_ext(tf, TF_and_ext)){}
-    else{return (tf)}
+    else{return (tf)} # or regurn FALSE
   }
   return (TRUE)
 }
@@ -169,33 +170,39 @@ tf_ext <- function(TF, TF_and_ext){
 # Dogma: if we have regular TF type, we use that data; if we only have ext data, use ext
 # if we have no data related to this tf, we will either give an error message or do nothing
 
+
 #' create Cell/Cluster activity data
 #' 
 #' Make activity data used in tab2 by either Cell or Cluster, the method would be provided by
 #' user's input in Shiny app
+#' This function uses feather file that will be read by a certain col to maximize speed,
+#' so we switch the paths of the feather file for different brain region
 #' 
 #' @param tf character vector, containing one or more TF names
 #' @param method either by Cell --> use cell data, or by cluster --> use cluster data, 
 #' this should be a string indicating the column name
+#' @param TF_and_ext TF_and_ext data, specific for cortex/pons
 #' @return a dataframe that has a column containing all the cell names and columns of the input tfs
 #' the corresponding activity
 #' data value (NES) 
 #'
 #' @examples
-#' create_activity_data("Arx", "Cell")
-#' create_activity_data("Arx", "Cluster")
-#' create_activity_data("Arx", "Abc") # --> "Wrong usage", please use either Cell/Cluster
-create_activity_data <- function(tf, method){ 
+#' create_activity_data("Arx", "Cell", "cortex", TF_and_ext)
+#' create_activity_data("Pax6", "Cluster", "pons", TF_and_ext_pon)
+
+
+create_activity_data <- function(tf, method, region, TF_and_ext){ 
   # use the feature of feather data to read certain col to optimize speed
-  if(str_detect(method,"(?i)Cell")){ # case-insensitive checking
-    cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
-                             "Cell")
-  }
-  else if(str_detect(method,"(?i)Cluster")){
-    cell_col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather",
-                             "Cluster")
-  }
-  else{return("Wrong usage")}
+  #if(tf_exist(tf, TF_and_ext) != TRUE){return("TF does not exist")}
+  if(!region %in% c("cortex", "pons")) return("Wrong usage: region should be either cortex/pons")
+  
+  # set up the path of the feather file to read
+  path <- glue('data/joint_{region}/joint_{region}.regulon_activity_per_{method}.feather')
+  
+  # case-insensitive checking
+  if(str_detect(method,"(?i)Cell")){cell_col <- read_feather(path, "Cell")}
+  else if(str_detect(method,"(?i)Cluster")){cell_col <- read_feather(path,"Cluster")}
+  else{return("Wrong usage, method should be Cell/Cluster")}
   
   # add certain tf activity data to the Cell column
   activity <- cell_col
@@ -210,14 +217,9 @@ create_activity_data <- function(tf, method){
     else{
       next # means we don't have that data, we jump over it and do thing
     }
-    if(str_detect(method,"(?i)Cell")){
-      col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
-                          tf_to_read)
-    }
-    else{
-      col <- read_feather("data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather",
-                          tf_to_read)
-    }
+    
+    if(str_detect(method,"(?i)Cell")){col <- read_feather(path,tf_to_read)}
+    else{col <- read_feather(path,tf_to_read)}
     
     activity <- add_column(activity,col)
   }
@@ -250,36 +252,70 @@ makePheatmapAnno <- function(palette, column) {
 
 # not used for now
 
-plot_heatmap <- function(metadata, TF_active, activity_cluster){
+#' Title
+#'
+#' @param tf 
+#' @param method 
+#' @param region 
+#' @param TF_and_ext 
+#' @param brain_data either forebrain_data or pon_data, eventually will be saved by data_prep.R
+#' and loaded at the beginning of app.R as an element in a list
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' plot_heatmap(c("Arx","Lef1"), "Cluster","cortex", TF_and_ext,forebrain_data)
+#' plot_heatmap(c("Arx","Lef1"), "Cell","cortex", TF_and_ext,forebrain_data)
+#' plot_heatmap(c("Pax6","Lef1"), "Cluster","pons", TF_and_ext_pon, pon_data)
+#' plot_heatmap(c("Pax6","Lef1"), "Cell","pons", TF_and_ext_pon,pon_data)
+#' 
+plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num = 300, 
+                         cluster_plot_num = 50){
+  # sanity checking
+  if(!region %in% c("cortex", "pons")) return("Wrong usage: region should be either cortex/pons")
+  if(!method %in% c("Cell","Cluster")) return("Wrong usage, method should be Cell/Cluster")
   
-  colour_palette <- metadata %>% 
-    # use gsub to change all contents in Cluster (cluster name format)
-    mutate(Cluster = gsub("_", " ", Cluster)) %>% 
-    # Get two columns
-    select(Cluster, Colour) %>% 
-    # Convert to vector of colours, where the first column gives the names
-    # and the second column is converted to the values
-    deframe() # VECTOR , not data frame
-  
-  activity_cluster %>%
-    select(c("Cluster", TF_active[1])) %>% 
-    tibble::column_to_rownames(var = "Cluster") # make that column name as row name
-  
-  # A helper function to prepare a dataframe to annotate the heatmap with colours
-  hm_anno <- makePheatmapAnno(colour_palette, "Cluster")
-  
+  if(method == "Cell"){
+    # 1. create the activity data for plotting 
+    act_cell <- create_activity_data(tf, "Cell",region, TF_and_ext) %>%
+      mutate(Cluster = gsub("_"," ",brain_data[["Sample_cluster"]])) %>%
+      filter(!grepl("BLACKLIST", Cluster)) %>% # filter out bad samples
+      sample_n(cell_plot_num) %>%  # randomly sample it
+      tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
+    anno_row_cell <- select(act_cell, Cluster)
+    #anno_row_cell$Cluster <- as.factor(anno_row_cell$Cluster)
+    act <- select(act_cell, -Cluster) # must remove Cluster data before plotting
+    
+    # customized for plotting by cell
+    anno_col <- anno_row_cell # assign to the same variable for plotting
+    cell_width_plot <- 2
+    show_colname_plot <- FALSE
+  }
+  else if(method == "Cluster"){
+    act <- create_activity_data(tf, "Cluster",region, TF_and_ext) %>%
+      sample_n(cluster_plot_num) %>% # randomly sample it
+      tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
+    
+    # customized for plotting by cluster
+    anno_col <- hm_anno$anno_row # this is loaded by data_prep.R
+    cell_width_plot <- 10
+    show_colname_plot <- TRUE
+  }
   pheatmap::pheatmap(t(act),
+                     show_colnames = show_colname_plot,
                      scale = "none",
                      border_color = NA,
                      color = colorRampPalette(c("blue", "white", "red"))(100),
-                     main = "My 1st heatmap",
-                     annotation_col = hm_anno$anno_row,
+                     main = glue('Plot by {method}s'),
+                     annotation_col = anno_col,
                      # change the default color annotation
-                     annotation_colors = hm_anno$side_colors, 
+                     annotation_colors = hm_anno$side_colors, # loaded by data_prep.R
                      annotation_legend = TRUE,
-                     cellwidth = 10,
+                     cellwidth = cell_width_plot,
                      cellheight = 10)
 } 
+
 
 
 #' make cell metadata of certain region, cortex/pon
@@ -305,6 +341,21 @@ create_cell_metadata <- function(metadata_part){
                                         "Forebrain P0",
                                         "Forebrain P3",
                                         "Forebrain P6"))) %>% 
+    arrange(Cell)
+  
+}
+create_cell_metadata_pon <- function(metadata_part){
+  metadata_part %>% 
+    select(Age = orig.ident, Cell, Cluster = ID_20190715_with_blacklist_and_refined) %>% 
+    # In this case, we remove the "prefix" of the Cluster column, so that we are
+    # simply left with the abbreviation representing the cell type, so that 
+    # we can link the cells of the same cell type across ages
+    separate(Cluster, into = c("Prefix", "Cluster"), sep = "_") %>% 
+    mutate(Age = factor(Age, levels = c("Hindbrain E12.5",
+                                        "Pons E15.5",
+                                        "Pons P0",
+                                        "Pons P3",
+                                        "Pons P6"))) %>% 
     arrange(Cell)
   
 }
