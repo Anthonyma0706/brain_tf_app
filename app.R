@@ -43,8 +43,6 @@ ui <- fluidPage(
     
     sidebarLayout(
         sidebarPanel(
-            # Update everything
-            actionButton("update", label = "Update"),
             # choose which datasets to analyze for the whole app
             radioButtons("region", "Brain region",
                          # use the names in the vector to display
@@ -53,7 +51,7 @@ ui <- fluidPage(
                                      "Pons" = "pons"),
                          selected = "cortex"),
             
-            actionButton("update_tf", label = "Update transcription factors to see the plots"),
+            #actionButton("update_tf", label = "Update transcription factors to see the plots"),
             selectInput(inputId = "TF",
                         label = "transcription factor",
                         choices = unique_TF,
@@ -81,7 +79,9 @@ ui <- fluidPage(
     
                              )),
             # 3. time series plot
-            conditionalPanel(condition = "input.tabs == 'time series'")
+            conditionalPanel(condition = "input.tabs == 'time series'"),
+            # Update everything
+            actionButton("update", label = "Update"),
         ),
         mainPanel(tabsetPanel(
             
@@ -121,7 +121,7 @@ server <- function(input, output, session) {
     }
     else{
       updateSelectInput(session, inputId = "TF", choices = data_pons$unique_TF, 
-                        selected = c("Pax6","Lef1"))
+                        selected = c("Lhx5","Pax7"))
     }
   })
   
@@ -137,6 +137,7 @@ server <- function(input, output, session) {
       }
     
     l$tf <- input$TF
+    l$region <- input$region
     # l has following elements with same names for both options above:
     # l contains ...
     # "overall" = pon_data,
@@ -157,7 +158,7 @@ server <- function(input, output, session) {
   # -----------------------------Tab1:table and network------------------------------------------
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      datatable(dplyr::filter(TF_target_gene, TF %in% input_new()$tf))
+      datatable(dplyr::filter(input_new()$TF_target_gene, TF %in% input_new()$tf))
     })
     
     
@@ -169,17 +170,17 @@ server <- function(input, output, session) {
     nodeData <- eventReactive(input$show,{
       req(input$show)
       if(input$show == "all"){
-        create_network(input_new()$tf)$nodes
+        create_network(input_new()$tf, input_new()$TF_target_gene)$nodes
       }
       else{
-        create_network(input_new()$tf)$nodes %>%
+        create_network(input_new()$tf, input_new()$TF_target_gene)$nodes %>%
           filter(color!="lightgrey")
       }
     })
     output$network <- renderRcytoscapejs({
       
       nodeData <- nodeData()
-      edgeData <- create_network(input_new()$tf)$edges
+      edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene)$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
  
@@ -197,19 +198,19 @@ server <- function(input, output, session) {
     
     output$heatmap_cell <- renderPlot({
       req("Cell" %in% input$method)
-      plot_heatmap(input_new()$tf, "Cell","cortex", TF_and_ext,forebrain_data)
+      plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$overall)
     })
     
     output$heatmap_cluster <- renderPlot({
       req("Cluster" %in% input$method)
-      plot_heatmap(input_new()$tf, "Cluster","cortex", TF_and_ext,forebrain_data)
+      plot_heatmap(input_new()$tf, "Cluster",input_new()$region, input_new()$TF_and_ext,input_new()$overall)
     })
   
     # The cluster scatterplot is always plot by cells, so we use an independent reactive
     # value for this plot
     activity_data_cluster <- reactive({
       # use the feature of feather data to read certain col to optimize speed
-      create_activity_data(input_new()$tf, "Cell",region = "cortex", TF_and_ext)
+      create_activity_data(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext)
     })
     
     output$cluster1 <- renderPlot({
@@ -217,7 +218,7 @@ server <- function(input, output, session) {
       activity_test1 <- activity_data_cluster()[,2][[1]] # now we only plot the first tf input,
       # more plots could be generated later
       # add an activity column
-      forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
+      forebrain_with_activity <- mutate(input_new()$overall, activity_1 = activity_test1) 
       
       ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
         geom_point(aes(color = activity_1))+
@@ -231,7 +232,7 @@ server <- function(input, output, session) {
       activity_test1 <- activity_data_cluster()[,3][[1]] # now we only plot the first tf input,
       # more plots could be generated later
       # add an activity column
-      forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
+      forebrain_with_activity <- mutate(input_new()$overall, activity_1 = activity_test1) 
       
       ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
         geom_point(aes(color = activity_1))+
@@ -247,23 +248,23 @@ server <- function(input, output, session) {
       req(length(input_new()$tf)>0)
       #tf_df <- as_tibble(rownames(activity))
       # tf_df is loaded at beginning using data_prep.R
-      TF <- translate_tf(input_new()$tf[1],tf_df)
+      TF <- translate_tf(input_new()$tf[1],input_new()$tf_df)
       req(TF)
-      plot_timeseries(TF,cell_metadata_cortex, binary_activity)
+      plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
  
     })
     output$timeseries2 <- renderPlot({
       req(length(input_new()$tf)>1)
-      TF <- translate_tf(input_new()$tf[2],tf_df)
+      TF <- translate_tf(input_new()$tf[2],input_new()$tf_df)
       req(TF)
-      plot_timeseries(TF,cell_metadata_cortex, binary_activity)
+      plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
       
     })
     output$timeseries3 <- renderPlot({
       req(length(input_new()$tf)>2)
-      TF <- translate_tf(input_new()$tf[3],tf_df)
+      TF <- translate_tf(input_new()$tf[3],input_new()$tf_df)
       req(TF)
-      plot_timeseries(TF,cell_metadata_cortex, binary_activity)
+      plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
       
     })
     
