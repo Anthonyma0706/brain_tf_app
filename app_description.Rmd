@@ -10,40 +10,49 @@ output:
 ## Goal  
 * This app designs for displaying transcription factor and gene data from mice in various fancy ways by three main tabs including:  
   - Given user's TF input, display a table of genes associated with that TF and a network graph visualization displaying detailed information with node color and edge thickness
-  - A heatmap which visualizes color gradient using NES(the activity score) per cluster/cell (PS: might be interactive)
+  - A heatmap which visualizes color gradient using NES (the activity score) per cluster/cell (PS: might be interactive using complex heatmap)
   - A scatterplot that, using UMAP cluster algorithm, reduces dimensions in huge cluster genetic data, display closely related clusters. 
   
 More details of functions of each tab will be shown later, with major aspects: user input, output, datasets, libraries required and possible demos of plot/table
 
+## Second phase after prototype:  
+Main modifications:
+- combine pons and cortex datasets together, they have the same format for all data, choose the data structure to save them and assign in app.R using list  
+- add options of plotting by cell or cluster in the second tab, add color palette designed/commonly recognized in Kleinman lab  
+- write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets
+- 
+
+Further issue/modification required:  
+- tab1: display an additional table for the graph network  
+- Modify tab3 function to suit the pons data
+- modify R markdown file to add the paramters of functions since we've changed the function parameters
+- - plotly, complex heatmap features to be applied in this app  
+- support multiple plots of scatterplot in tab2 also add a title name by the tf
+- error message? Use a function? Any example online?
+  + show error of missing TFs?  
+  + in psuedotime?  
+  + add explanation of the missing TF in activity_cell datasets  
+- consider some customization features (CSS...) since we've had a good prototype that supports basic functionality  
+
+
 
 ## To-do list and questions: 
-make several updates of features:  
-  - a text title of UMAP cluster, change 'binary activity' into 'proportion of ... tf'
+
 ### things need to learn: 
 - Hackathon:  
   - plotly, complex heatmap
-- problem:  
-  - error of coercing... in ribbon plot  - run debugger automatically  
 - Monday meeting:  
-  - cell_metadata for timeseries plot? I don't seem to have that data  
   - show error of missing TFs?  
   - in psuedotime?  
-  - ggplot sometimes show up on app html page but in plot console  
-  - change default color of the scatterplot  
   - add explanation of the missing TF in activity_cell datasets  
-  - analyze source code of rcytoscapejs2 to see if a graph input can be produced
-  - maybe put more time in learning during hackathon  
-
+  
 - organize data  
   + name datasets with different prefix according to brain region  
   + import all datasets initially before ui and server function except big datasets, feather data  
   + put data in reactive if that involves input$TF and frequently needs to be updated
-- Keep several layouts in one page  
-- heatmap, complex heatmap  
-- maybe learn dynamic UI  
+
 
 ### unsolved: 
-- Problem: cell data might be too big that I can't plot heatmap?
 - use a list to save all datasets? use event reactive ..
 - heatmap plot, a good way to organize code? use function?
 
@@ -94,8 +103,10 @@ library(ggplot2)
 library(pheatmap)
 library(DT)
 library(rcytoscapejs2)
-
-load("data/joint_cortex/cortex_prep.Rda")
+library(glue)
+load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
+load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
+load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
 source("functions.R")
 
 #library(pheatmap)
@@ -177,23 +188,15 @@ library(rcytoscapejs2)
 TF <- c("Arx","Lef1")
 ```
 
-```{r}
-# an option to neglect greycolor nodes
-unique_TF <- unique(TF_target_gene[["TF"]])
-nodeData <- create_network(TF)$nodes#%>%
-  #filter(color!="lightgrey")
-#nodeData$height <- 50
-#nodeData$width <- 50
-edgeData <- create_network(TF)$edges 
-#edgeData$color <- "#9d4097"
-
-```
 
 ```{r}
+TF <- c("Lhx5","Pax7")
+nodeData <- create_network(TF, data_pons$TF_target_gene, data_pons$unique_TF)$nodes
+edgeData <- create_network(TF, data_pons$TF_target_gene, data_pons$unique_TF)$edges
 network <- createCytoscapeJsNetwork(nodeData, edgeData)
 rcytoscapejs2(network$nodes, network$edges)
-```
 
+```
 
 ## 2. Heatmap and cluster scatterplot
 - discription: Given user's TF input, display a heatmap and clustering scatterplot
@@ -212,7 +215,6 @@ library(pheatmap)
   
 ### Option 1: plot by Cluster
 ```{r}
-
 colour_palette <- metadata %>% 
   # use gsub to change all contents in Cluster (cluster name format)
   mutate(Cluster = gsub("_", " ", Cluster)) %>% 
@@ -225,7 +227,7 @@ colour_palette <- metadata %>%
 # A helper function to prepare a dataframe to annotate the heatmap with colours
 hm_anno <- makePheatmapAnno(colour_palette, "Cluster")
 
-act_cluster <- create_activity_data(c("E2f1","Atf3"), "Cluster") %>%
+act_cluster <- create_activity_data(c("E2f1","Atf3"), "Cluster", "cortex",data_cortex$TF_and_ext) %>%
   sample_n(30) %>%
   tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
 
@@ -241,43 +243,38 @@ pheatmap::pheatmap(t(act_cluster),
                    annotation_legend = ,
                    cellwidth = 10,
                    cellheight = 10)
-act_cluster
-t(act_cluster)
-hm_anno$anno_row
-length(hm_anno$side_colors[[1]])
+
 ```
-  ![alt text](data/image/heatmap_demo3.png)  
-### Option 2: plot by Cell, no colour palette
+
+### Option 2: plot by Cell, same colour palette as plotting by cluster
 ```{r}
-colour_palette <- metadata %>% 
-  # use gsub to change all contents in Cluster (cluster name format)
-  mutate(Cluster = gsub("_", " ", Cluster)) %>% 
-  # Get two columns
-  select(Cluster, Colour) %>% 
-  # Convert to vector of colours, where the first column gives the names
-  # and the second column is converted to the values
-  deframe() # VECTOR , not data frame 
+#,"Atf3","Dlx1","Olig2","Lef1","Hes6",
+act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell","cortex", data_cortex$TF_and_ext) %>%
+  mutate(Cluster = gsub("_"," ",data_cortex$overall[["Sample_cluster"]])) %>%
+  filter(!grepl("BLACKLIST", Cluster)) %>%
+   sample_n(300) %>%
+  tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
 
-palette <- colour_palette[unique(names(colour_palette))] # with unique names
-  # Make dataframe, retrieve the data frame
-anno_row <- data.frame(cluster = names(palette))
-names(anno_row) <- "Cluster"  # just change the name ...
-rownames(anno_row) <- anno_row[[1]]
+anno_row_cell <- select(act_cell, Cluster)
 
-head(palette)
-head(anno_row)
-```
+act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
+  #sample_n(30)
 
-```{r}
-# Make list containing colours
-side_colors <- list(cluster = palette)
-names(side_colors) <- "Cluster" # just change the name ...
+pheatmap::pheatmap(t(act_cell),
+                   show_colnames = FALSE,
+                   scale = "none",
+                   border_color = NA,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   main = "Plot by Cells",
+                   annotation_col = anno_row_cell,
+                   # change the default color annotation
+                   annotation_colors = hm_anno$side_colors, 
+                   annotation_legend = TRUE,
+                   cellwidth = 2,
+                   cellheight = 10)
 
-# A helper function to prepare a dataframe to annotate the heatmap with colours
-hm_anno <- makePheatmapAnno(colour_palette, "Cluster")
+``` 
 
-head(side_colors)
-```
 ### Pheatmap recap: how to make annotation_col or row  
 ```{r}
 library(pheatmap)
@@ -318,64 +315,52 @@ pheatmap(test, annotation_col = annotation_col, annotation_row = annotation_row)
 # annotation_row
 ```
 
-```{r}
-#,"Atf3","Dlx1","Olig2","Lef1","Hes6",
-act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell") %>%
-  mutate(Cluster = gsub("_"," ",forebrain_data[["Sample_cluster"]])) %>%
-  filter(!grepl("BLACKLIST", Cluster)) %>%
-   sample_n(300) %>%
-  tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
-#factor <- factor(select(act_cell, Cluster))
-anno_row_cell <- select(act_cell, Cluster)
-#anno_row_cell$Cluster <- as.factor(anno_row_cell$Cluster)
 
-act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
-  #sample_n(30)
-
-pheatmap::pheatmap(t(act_cell),
-                   show_colnames = FALSE,
-                   scale = "none",
-                   border_color = NA,
-                   color = colorRampPalette(c("blue", "white", "red"))(100),
-                   main = "Plot by Cells",
-                   annotation_col = anno_row_cell,
-                   # change the default color annotation
-                   annotation_colors = hm_anno$side_colors, 
-                   annotation_legend = TRUE,
-                   cellwidth = 2,
-                   cellheight = 10)
-# anno_row_cell
-# act_cell
-# hm_anno$side_colors
-``` 
  
-  
   2. A scatterplot that plots a scatter plot using UMAP1 and UMAP2 in forebrain_data, then given a user input of TF, using the 6. Activity per cell: activity_cell, change the color of each cell to reflect their TF activity, based on the user input of TF
   ![alt text](data/image/UMAP_demo1.png)  
 ```{r,results='asis', message= FALSE, echo = TRUE}
-activity_test1 <- activity_cell[["E2f1 (122g)"]] # mutate need a vector
-
+activity_test1 <- create_activity_data("Arx", "Cell","cortex", data_cortex$TF_and_ext)[,2][[1]]
+    
 # add a activity column
-forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
+forebrain_with_activity <- mutate(data_cortex$overall, activity_1 = activity_test1) 
 
 ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-  geom_point(aes(color = activity_1))+
-  theme_bw()
+        geom_point(aes(color = activity_1))+
+        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
+        theme_bw()
+
+
 ```  
 
 
 ```{r,results='asis', message= FALSE, echo = TRUE}
-activity_test2 <- activity_cell[[120]] # a very different TF
+activity_test2 <- create_activity_data("Lef1", "Cell","cortex", data_cortex$TF_and_ext)[,2][[1]]
+    
 # add a activity column
-forebrain_with_activity <- mutate(forebrain_data, activity_2 = activity_test2) 
+forebrain_with_activity <- mutate(data_cortex$overall, activity_1 = activity_test2) 
 
 ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-  geom_point(aes(color = activity_2))+
-  theme_bw()
+        geom_point(aes(color = activity_1))+
+        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
+        theme_bw()
+
  
 ```
 
+```{r,results='asis', message= FALSE, echo = TRUE}
+activity_test2 <- create_activity_data("Lef1", "Cell","pons", data_pons$TF_and_ext)[,2][[1]]
+    
+# add a activity column
+forebrain_with_activity <- mutate(data_pons$overall, activity_1 = activity_test2) 
 
+ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
+        geom_point(aes(color = activity_1))+
+        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
+        theme_bw()
+
+ 
+```
 
 
 
