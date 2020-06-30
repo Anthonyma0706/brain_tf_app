@@ -15,13 +15,12 @@ library(ggplot2)
 library(pheatmap)
 library(DT)
 library(rcytoscapejs2)
-load("data/joint_cortex/cortex_prep.Rda")
+load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
+load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
+load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
 source("functions.R")
 
 # datasets
-
-#---------------------------------------------------------------------------
-
 
 #---------------------------------------------------------------------------
 # TF has ext and weight suffix in these datas
@@ -44,13 +43,15 @@ ui <- fluidPage(
     
     sidebarLayout(
         sidebarPanel(
+            # Update everything
+            actionButton("update", label = "Update"),
             # choose which datasets to analyze for the whole app
             radioButtons("region", "Brain region",
                          # use the names in the vector to display
                          # use the character "joint_cortex" to match the path to import data
-                         choices = c("Forebrain" = "joint_cortex",
-                                     "Pons" = "joint_pons"),
-                         selected = "Forebrain"),
+                         choices = c("Forebrain" = "cortex",
+                                     "Pons" = "pons"),
+                         selected = "cortex"),
             
             actionButton("update_tf", label = "Update transcription factors to see the plots"),
             selectInput(inputId = "TF",
@@ -65,7 +66,9 @@ ui <- fluidPage(
                                           # use the names in the vector to display
                                           # use the character "joint_cortex" to match the path to import data
                                           choices = c("show all nodes" = "all",
-                                                      "neglect graynodes " = "neglect"))#,
+                                                      "neglect graynodes " = "neglect",
+                                                      "stop showing" = "stop"),
+                                          selected = "stop")#,
                              #actionButton("update_graph", label = "See the network graph")
                              ),
             # 2. heatmap and clustering
@@ -109,14 +112,52 @@ ui <- fluidPage(
     
 )
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+  # Dynamic UI, change the selectInput tf lists on display
+  observeEvent(input$region,{
+    if(input$region == "cortex"){
+      updateSelectInput(session, inputId = "TF", choices = data_cortex$unique_TF, 
+                        selected = c("Arx","Lef1"))
+    }
+    else{
+      updateSelectInput(session, inputId = "TF", choices = data_pons$unique_TF, 
+                        selected = c("Pax6","Lef1"))
+    }
+  })
   
-  input_tf <- eventReactive(input$update_tf,{input$TF})
+  
+  input_new <- eventReactive(input$update,{
+    
+    l <- list()
+    if(input$region == "cortex"){
+      l <- data_cortex
+    }
+    else if(input$region == "pons"){
+      l <- data_pons
+      }
+    
+    l$tf <- input$TF
+    # l has following elements with same names for both options above:
+    # l contains ...
+    # "overall" = pon_data,
+    # "TF_and_ext" = TF_and_ext_pon,
+    # "TF_target_gene" = TF_target_gene_pon,
+    # "unique_TF" = unique_TF_pon,
+    # "TF_active" = TF_active_pon,
+    # "tf_df" = tf_df_pon,
+    # "cell_metadata" = cell_metadata_pon,
+    # "binary_activity" = binary_activity_pon
+    # We will use the same name attributes to retrive data
+    return (l)
+   
+  })
+  
+  #input_tf <- reactive(input_new()$tf)
   
   # -----------------------------Tab1:table and network------------------------------------------
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      datatable(dplyr::filter(TF_target_gene, TF %in% input_tf()))
+      datatable(dplyr::filter(TF_target_gene, TF %in% input_new()$tf))
     })
     
     
@@ -128,17 +169,17 @@ server <- function(input, output) {
     nodeData <- eventReactive(input$show,{
       req(input$show)
       if(input$show == "all"){
-        create_network(input_tf())$nodes
+        create_network(input_new()$tf)$nodes
       }
       else{
-        create_network(input_tf())$nodes %>%
+        create_network(input_new()$tf)$nodes %>%
           filter(color!="lightgrey")
       }
     })
     output$network <- renderRcytoscapejs({
       
       nodeData <- nodeData()
-      edgeData <- create_network(input_tf())$edges
+      edgeData <- create_network(input_new()$tf)$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
  
@@ -148,7 +189,7 @@ server <- function(input, output) {
     # -----------------------------Tab2-------------------------------------------
     # activity_data_heatmap <- reactive({
     #   # use the feature of feather data to read certain col to optimize speed
-    #   create_activity_data(input_tf(), input$method)
+    #   create_activity_data(input_new()$tf, input$method)
     # })
     # eventReactive(input$update_heatmap, {
     #   
@@ -156,66 +197,26 @@ server <- function(input, output) {
     
     output$heatmap_cell <- renderPlot({
       req("Cell" %in% input$method)
-        act_cell <- create_activity_data(input_tf(), "Cell") %>%
-          mutate(Cluster = gsub("_"," ",forebrain_data[["Sample_cluster"]])) %>%
-          filter(!grepl("BLACKLIST", Cluster)) %>% # filter out bad samples
-          sample_n(300) %>%
-          tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
-        anno_row_cell <- select(act_cell, Cluster)
-        #anno_row_cell$Cluster <- as.factor(anno_row_cell$Cluster)
-        act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
-       
-        pheatmap::pheatmap(t(act_cell),
-                           show_colnames = FALSE,
-                           scale = "none",
-                           border_color = NA,
-                           color = colorRampPalette(c("blue", "white", "red"))(100),
-                           main = "Plot by Cells",
-                           annotation_col = anno_row_cell,
-                           # change the default color annotation
-                           annotation_colors = hm_anno$side_colors, 
-                           annotation_legend = TRUE,
-                           cellwidth = 2,
-                           cellheight = 10)
+      plot_heatmap(input_new()$tf, "Cell","cortex", TF_and_ext,forebrain_data)
     })
     
     output$heatmap_cluster <- renderPlot({
       req("Cluster" %in% input$method)
-        act <- create_activity_data(input_tf(), "Cluster") %>%
-          sample_n(30) %>%
-          tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
-        
-        pheatmap::pheatmap(t(act),
-                           #show_colnames = FALSE,
-                           scale = "none",
-                           border_color = NA,
-                           color = colorRampPalette(c("blue", "white", "red"))(100),
-                           main = "Plot by Clusters",
-                           annotation_col = hm_anno$anno_row,
-                           # change the default color annotation
-                           annotation_colors = hm_anno$side_colors, 
-                           annotation_legend = TRUE,
-                           cellwidth = 10,
-                           cellheight = 10)
-      
-      
-      
-      
+      plot_heatmap(input_new()$tf, "Cluster","cortex", TF_and_ext,forebrain_data)
     })
   
     # The cluster scatterplot is always plot by cells, so we use an independent reactive
     # value for this plot
     activity_data_cluster <- reactive({
       # use the feature of feather data to read certain col to optimize speed
-      create_activity_data(input_tf(), "Cell")
+      create_activity_data(input_new()$tf, "Cell",region = "cortex", TF_and_ext)
     })
     
     output$cluster1 <- renderPlot({
-      req(length(input_tf())>0)
+      req(length(input_new()$tf)>0)
       activity_test1 <- activity_data_cluster()[,2][[1]] # now we only plot the first tf input,
       # more plots could be generated later
-      #activity_test1 <- create_activity_data("Arx")[,2][[1]]
-      # add a activity column
+      # add an activity column
       forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
       
       ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
@@ -226,11 +227,10 @@ server <- function(input, output) {
     })
     
     output$cluster2 <- renderPlot({
-      req(length(input_tf())>1)
+      req(length(input_new()$tf)>1)
       activity_test1 <- activity_data_cluster()[,3][[1]] # now we only plot the first tf input,
       # more plots could be generated later
-      #activity_test1 <- create_activity_data("Arx")[,2][[1]]
-      # add a activity column
+      # add an activity column
       forebrain_with_activity <- mutate(forebrain_data, activity_1 = activity_test1) 
       
       ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
@@ -244,24 +244,24 @@ server <- function(input, output) {
     
     # --------------------------------------Tab3: timeseries-------------------------------------------
     output$timeseries1 <- renderPlot({
-      req(length(input_tf())>0)
+      req(length(input_new()$tf)>0)
       #tf_df <- as_tibble(rownames(activity))
       # tf_df is loaded at beginning using data_prep.R
-      TF <- translate_tf(input_tf()[1],tf_df)
+      TF <- translate_tf(input_new()$tf[1],tf_df)
       req(TF)
       plot_timeseries(TF,cell_metadata_cortex, binary_activity)
  
     })
     output$timeseries2 <- renderPlot({
-      req(length(input_tf())>1)
-      TF <- translate_tf(input_tf()[2],tf_df)
+      req(length(input_new()$tf)>1)
+      TF <- translate_tf(input_new()$tf[2],tf_df)
       req(TF)
       plot_timeseries(TF,cell_metadata_cortex, binary_activity)
       
     })
     output$timeseries3 <- renderPlot({
-      req(length(input_tf())>2)
-      TF <- translate_tf(input_tf()[3],tf_df)
+      req(length(input_new()$tf)>2)
+      TF <- translate_tf(input_new()$tf[3],tf_df)
       req(TF)
       plot_timeseries(TF,cell_metadata_cortex, binary_activity)
       
