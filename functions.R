@@ -10,17 +10,20 @@
 #' A good to visualize correlations among multiple TFs
 #' 
 #' @param tf one single tf name character
+#' @param TF_target_gene TF_target_gene data, specific for cortex/pon
+#' @param unique_TF unique_TF data, specific for cortex/pon
 #'
 #' @return a list of nodeData and edgeData that are required for generating a rcytoscapejs network object
 #' 
 #' @examples 
 #' TF <- c("Arx","Lef1")
-#' nodeData <- create_network(TF)$nodes
-#' edgeData <- create_network(TF)$edges
+#' # Note that TF_target_gene and unique_TF will be saved in data_cortex list, by data_prep.R
+#' nodeData <- create_network(TF, TF_target_gene_pon, unique_TF)$nodes
+#' edgeData <- create_network(TF, TF_target_gene_pon, unique_TF)$edges
 #' network <- createCytoscapeJsNetwork(nodeData, edgeData)
 #' rcytoscapejs2(network$nodes, network$edges)
 #' 
-create_network <- function(tf){ 
+create_network <- function(tf, TF_target_gene, unique_TF){ 
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
   
@@ -250,7 +253,6 @@ makePheatmapAnno <- function(palette, column) {
   
 }
 
-# not used for now
 
 #' Title
 #'
@@ -270,8 +272,7 @@ makePheatmapAnno <- function(palette, column) {
 #' plot_heatmap(c("Pax6","Lef1"), "Cluster","pons", TF_and_ext_pon, pon_data)
 #' plot_heatmap(c("Pax6","Lef1"), "Cell","pons", TF_and_ext_pon,pon_data)
 #' 
-plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num = 300, 
-                         cluster_plot_num = 50){
+plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num = 300){
   # sanity checking
   if(!region %in% c("cortex", "pons")) return("Wrong usage: region should be either cortex/pons")
   if(!method %in% c("Cell","Cluster")) return("Wrong usage, method should be Cell/Cluster")
@@ -294,7 +295,7 @@ plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num
   }
   else if(method == "Cluster"){
     act <- create_activity_data(tf, "Cluster",region, TF_and_ext) %>%
-      sample_n(cluster_plot_num) %>% # randomly sample it
+      #sample_n(cluster_plot_num) %>% # randomly sample it
       tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
     
     # customized for plotting by cluster
@@ -315,6 +316,42 @@ plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num
                      cellwidth = cell_width_plot,
                      cellheight = 10)
 } 
+
+
+#' Make UMAP clustering scatterplot
+#'
+#' @param tf_number Either 1 or 2. In the tf input vector we get from user in Shiny app, there could be
+#' multiple tfs, but we only support plotting two tfs since the scatterplot is big
+#' @param overall_brain_data metadata (forebrain_data or pon_data), saved in data_cortex
+#' and data_pons
+#' @param cell_activity_data made by make_cell_metadata given the tf input
+#' @param sample_number we eliminate half of the cell samples to relieve the burden of 
+#' the RAM to speed up plotting, since we have over 37000 cells(samples), we randomly sample 
+#' 13000 to optimize speed, but one can also specify this value to see fewer or more sample points
+#'
+#' @return a UMAP scatter plot that shows in which cluster(region) the tf expresses the most
+#'
+#' @examples
+#' tf <- c("Arx","Lef1")
+#' activity_test_tf1 <- create_activity_data(tf, "Cell","cortex", data_cortex$TF_and_ext)
+#' plot_UMAP(tf_number = 1,data_cortex$overall, activity_test_tf1)
+#' 
+plot_UMAP <- function(tf_number, overall_brain_data, cell_activity_data, sample_number = 13000){
+  if(tf_number == 1) tf_plot <- 2
+  else if(tf_number == 2) tf_plot <- 3
+  else{return(
+    "Wrong usage, now we only support plotting two tfs since the scatterplot is big"
+  )}
+  
+  activity_tf <- cell_activity_data[,tf_plot][[1]]
+  forebrain_with_activity <- mutate(overall_brain_data, activity_tf = activity_tf) %>%
+    sample_n(sample_number)
+  ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
+    geom_point(aes(color = activity_tf))+
+    scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
+    theme_bw()
+  
+}
 
 
 
@@ -458,28 +495,25 @@ plot_timeseries <- function(TF,cell_metadata, activity){
     scale_x_continuous(breaks = seq_along(unique(df$stage)),
                        labels = c("E12.5", "E15.5", "P0", "P3", "P6"),
                        limits = c(1, length(unique(df$stage)))) +
-    labs(x = "age", y = "Binary activity", title = TF) +
+    labs(x = "age", y = "Proportion", title = TF) +
     guides(fill = guide_legend(ncol = 5)) +
     theme(legend.position = "bottom")
 }
 
 
-
-
-
-#TF_tbl1 <- as_tibble(TF_active)
-#TF_tb2<- as_tibble(tf_list)
-
-# missing_tf <- TF_tbl1 %>%
-#   mutate(exist = if_else(value %in% tf_list, 1, 0)) %>%
-#   filter(exist==0)
-#
-# mutual_tf <- TF_tbl1 %>%
-#   mutate(exist = if_else(value %in% tf_list, 1, 0)) %>%
-#   filter(exist==1)
-  
-  
-  
-  
-  
+# TF <- translate_tf("Pax6",data_pons$tf_df)
+# 
+# plot_timeseries(TF,cell_test, data_pons$binary_activity)
+# 
+# TF <- translate_tf("Arx",data_cortex$tf_df)
+# 
+# plot_timeseries(TF,data_cortex$cell_metadata, data_cortex$binary_activity)
+# 
+# activity <- data_pons$binary_activity
+# activity <- activity[TF, ] %>%
+#   {data.frame("TF" = .)} %>%
+#   tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
+#   arrange(Cell)
+# 
+# cell_test <- filter(data_pons$cell_metadata, Cell != "___po_e12_TACGGGCGTCAAGCGA")
 
