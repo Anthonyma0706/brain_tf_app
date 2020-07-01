@@ -77,7 +77,11 @@ TF_and_ext_pon <- identify_tf(TF_active_pon)
 # metadata specific for each cell, corresponding to the activity data
 cell_metadata_pon_prep <- read_tsv("data/joint_pons/joint_pons.metadata.tsv")
 
-cell_metadata_pon <- create_cell_metadata_pon(cell_metadata_pon_prep)
+cell_metadata_pon <- create_cell_metadata_pon(cell_metadata_pon_prep) %>%
+  filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
+# remove the extra line to make the number of cells the same as the binary activity pon data
+# to correctly make the timeseires ribbon plot
+
 # activity for cortex timeseries graph data
 binary_activity_pon <- readRDS("data/joint_pons/joint_pons.binaryRegulonActivity_nonDupl.Rds")
 tf_df_pon <- as_tibble(rownames(binary_activity_pon)) #a dataframe that contains all the tf with 
@@ -97,10 +101,10 @@ tf_df_pon <- as_tibble(rownames(binary_activity_pon)) #a dataframe that contains
 
 
 # data_common <- list(
-#   "metadata" = metadata,
-#   "colour_palette_cluster" = colour_palette_cluster,
-#   hm_anno,colour_palette
-#   
+#   metadata,
+#   colour_palette_cluster,
+#   hm_anno,
+#   colour_palette
 # )
 
 # make two lists containing same name (will be assigned to a reactive list),
@@ -128,11 +132,13 @@ data_pons <- list(
   "binary_activity" = binary_activity_pon
   
 )
+
+
 # ---------------------------cortex data-----------------------------
 save(data_cortex, file = "data/joint_cortex/cortex_prep.Rda")
 
 # -----------------------------pon data-----------------------------
-save(data_cortex, file = "data/joint_pons/pons_prep.Rda")
+save(data_pons, file = "data/joint_pons/pons_prep.Rda")
 
 save(metadata,colour_palette_cluster,
      hm_anno,colour_palette, file = "data/joint_cortex/common_prep.Rda")
