@@ -22,7 +22,8 @@ Main modifications:
 - write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets
 - 
 
-Further issue/modification required:  
+Further issue/modification required: 
+- heatmap, show a picture of the cluster color palette
 - tab1: display an additional table for the graph network  
 - Modify tab3 function to suit the pons data
 - modify R markdown file to add the paramters of functions since we've changed the function parameters
@@ -93,8 +94,10 @@ Further issue/modification required:
 - assign training sets to the corresponding tab/plot  
 - Detailed definition of joint cortex? - have 5 time plots of pon and forebrain cluster data then join them again into a whole plot to see the overall relations and correlations of each cell
 
-## Library
+## Library, remember to install rcytoscapejs2 from github first
 ```{r, message= FALSE}
+library(rcytoscapejs2) # need to install from github
+
 library(shiny)
 library(tidyverse)
 library(dplyr)
@@ -102,14 +105,14 @@ library(feather)
 library(ggplot2)
 library(pheatmap)
 library(DT)
-library(rcytoscapejs2)
 library(glue)
+
 load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
 load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
 load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
 source("functions.R")
 
-#library(pheatmap)
+
 
 ```
 
@@ -177,20 +180,25 @@ The first column changes to cell, we use this for the UMAP cluster scatterplot i
 
 
 # Tabs
-## 1. table and network
+## Tab1. table and network
 - discription: Given user's TF input, display a table of genes associated with that TF and a network graph visualization displaying detailed information with node color and edge thickness 
 - data: 4. TF_target_gene; 5. Activity per cluster
 - input: a transcription factor, chosen from (3. Active TF data) vector TF_active
 - **package**:  
-```{r, message= FALSE}
-library(shiny)
-library(rcytoscapejs2)
-TF <- c("Arx","Lef1")
 ```
+library(shiny)
+library(DT)
+library(rcytoscapejs2)
+```
+```{r}
+input_tf <- c("Lhx5","Pax7")
+datatable(dplyr::filter(data_pons$TF_target_gene, TF %in% input_tf))
 
+```
 
 ```{r}
 TF <- c("Lhx5","Pax7")
+
 nodeData <- create_network(TF, data_pons$TF_target_gene, data_pons$unique_TF)$nodes
 edgeData <- create_network(TF, data_pons$TF_target_gene, data_pons$unique_TF)$edges
 network <- createCytoscapeJsNetwork(nodeData, edgeData)
@@ -198,10 +206,11 @@ rcytoscapejs2(network$nodes, network$edges)
 
 ```
 
+
 ## 2. Heatmap and cluster scatterplot
 - discription: Given user's TF input, display a heatmap and clustering scatterplot
 - **package**:  
-```{r, message= FALSE}
+```
 library(shiny)
 library(ggplot2)
 library(pheatmap)
@@ -213,7 +222,7 @@ library(pheatmap)
   The x-axis correspond to each cluster.  
   
   
-### Option 1: plot by Cluster
+### Option 1: plot by Cluster, Note that later in the app we will use function plot_heatmap() for easier control between regions and methods(by cell or cluster)
 ```{r}
 colour_palette <- metadata %>% 
   # use gsub to change all contents in Cluster (cluster name format)
@@ -320,44 +329,23 @@ pheatmap(test, annotation_col = annotation_col, annotation_row = annotation_row)
   2. A scatterplot that plots a scatter plot using UMAP1 and UMAP2 in forebrain_data, then given a user input of TF, using the 6. Activity per cell: activity_cell, change the color of each cell to reflect their TF activity, based on the user input of TF
   ![alt text](data/image/UMAP_demo1.png)  
 ```{r,results='asis', message= FALSE, echo = TRUE}
-activity_test1 <- create_activity_data("Arx", "Cell","cortex", data_cortex$TF_and_ext)[,2][[1]]
-    
-# add a activity column
-forebrain_with_activity <- mutate(data_cortex$overall, activity_1 = activity_test1) 
+# the first col is Cell [,1][1], so we use [2,1][1] for the first tf in the tf vector
 
-ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-        geom_point(aes(color = activity_1))+
-        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
-        theme_bw()
+tf <- c("Arx","Lef1")
+activity_test_tf1 <- create_activity_data(tf, "Cell","cortex", data_cortex$TF_and_ext)
+plot_UMAP(tf_number = 2,data_cortex$overall, activity_test_tf1)
+
+
+
 
 
 ```  
 
 
-```{r,results='asis', message= FALSE, echo = TRUE}
-activity_test2 <- create_activity_data("Lef1", "Cell","cortex", data_cortex$TF_and_ext)[,2][[1]]
-    
-# add a activity column
-forebrain_with_activity <- mutate(data_cortex$overall, activity_1 = activity_test2) 
-
-ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-        geom_point(aes(color = activity_1))+
-        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
-        theme_bw()
-
- 
-```
 
 ```{r,results='asis', message= FALSE, echo = TRUE}
-activity_test2 <- create_activity_data("Lef1", "Cell","pons", data_pons$TF_and_ext)[,2][[1]]
-    
-# add a activity column
-forebrain_with_activity <- mutate(data_pons$overall, activity_1 = activity_test2) 
-
-ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-        geom_point(aes(color = activity_1))+
-        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
-        theme_bw()
+activity_test_pon <- create_activity_data("Lef1", "Cell","pons", data_pons$TF_and_ext)
+plot_UMAP(tf_number = 1,data_pons$overall, activity_test_pon)
 
  
 ```
