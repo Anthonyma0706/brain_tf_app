@@ -15,6 +15,7 @@ library(ggplot2)
 library(pheatmap)
 library(DT)
 library(rcytoscapejs2)
+library(glue)
 load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
 load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
 load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
@@ -39,7 +40,7 @@ source("functions.R")
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-    titlePanel("joint cortex app"),
+    titlePanel("joint cortex and pons data app"),
     
     sidebarLayout(
         sidebarPanel(
@@ -54,7 +55,7 @@ ui <- fluidPage(
             #actionButton("update_tf", label = "Update transcription factors to see the plots"),
             selectInput(inputId = "TF",
                         label = "transcription factor",
-                        choices = unique_TF,
+                        choices = data_cortex$unique_TF,
                         multiple = TRUE,
                         selected = c("Arx","Lef1")),
             
@@ -71,8 +72,10 @@ ui <- fluidPage(
                              ),
             # 2. heatmap and clustering
             conditionalPanel(condition = "input.tabs == 'heatmap and clustering'",
-                             numericInput(inputId = "num_cell", label = "number of cells to visualize",
-                                          value = 50),
+                             numericInput(inputId = "num_cell_plot", label = "number of cells to visualize",
+                                          value = 300),
+                             # numericInput(inputId = "num_cluster_plot", label = "number of clusters to visualize",
+                             #              value = 50),
                              checkboxGroupInput("method", "Plot by cluster or cells",
                                    choices = c("cluster" = "Cluster",
                                                "cell" = "Cell")             
@@ -123,6 +126,7 @@ server <- function(input, output, session) {
       updateSelectInput(session, inputId = "TF", choices = data_pons$unique_TF, 
                         selected = c("Lhx5","Pax7"))
     }
+    updateRadioButtons(session, "show", selected = "stop")
   })
   
   
@@ -148,10 +152,9 @@ server <- function(input, output, session) {
     # "tf_df" = tf_df_pon,
     # "cell_metadata" = cell_metadata_pon,
     # "binary_activity" = binary_activity_pon
-    # We will use the same name attributes to retrive data
+    # We will use the same name attributes to retrieve data
     return (l)
-   
-  })
+    })
   
   #input_tf <- reactive(input_new()$tf)
   
@@ -170,17 +173,20 @@ server <- function(input, output, session) {
     nodeData <- eventReactive(input$show,{
       req(input$show)
       if(input$show == "all"){
-        create_network(input_new()$tf, input_new()$TF_target_gene)$nodes
+        create_network(input_new()$tf, input_new()$TF_target_gene,
+                       input_new()$unique_TF)$nodes
       }
       else{
-        create_network(input_new()$tf, input_new()$TF_target_gene)$nodes %>%
+        create_network(input_new()$tf, input_new()$TF_target_gene,
+                       input_new()$unique_TF)$nodes %>%
           filter(color!="lightgrey")
       }
     })
     output$network <- renderRcytoscapejs({
       
       nodeData <- nodeData()
-      edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene)$edges
+      edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene,
+                                 input_new()$unique_TF)$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
  
@@ -188,22 +194,17 @@ server <- function(input, output, session) {
     
     
     # -----------------------------Tab2-------------------------------------------
-    # activity_data_heatmap <- reactive({
-    #   # use the feature of feather data to read certain col to optimize speed
-    #   create_activity_data(input_new()$tf, input$method)
-    # })
-    # eventReactive(input$update_heatmap, {
-    #   
-    # })
-    
+   
     output$heatmap_cell <- renderPlot({
       req("Cell" %in% input$method)
-      plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$overall)
+      plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$overall,
+                   cell_plot_num = input$num_cell_plot)
     })
     
     output$heatmap_cluster <- renderPlot({
       req("Cluster" %in% input$method)
       plot_heatmap(input_new()$tf, "Cluster",input_new()$region, input_new()$TF_and_ext,input_new()$overall)
+                   
     })
   
     # The cluster scatterplot is always plot by cells, so we use an independent reactive
@@ -215,29 +216,13 @@ server <- function(input, output, session) {
     
     output$cluster1 <- renderPlot({
       req(length(input_new()$tf)>0)
-      activity_test1 <- activity_data_cluster()[,2][[1]] # now we only plot the first tf input,
-      # more plots could be generated later
-      # add an activity column
-      forebrain_with_activity <- mutate(input_new()$overall, activity_1 = activity_test1) 
-      
-      ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-        geom_point(aes(color = activity_1))+
-        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
-        theme_bw()
+      plot_UMAP(tf_number = 1,input_new()$overall, activity_data_cluster())
       
     })
     
     output$cluster2 <- renderPlot({
       req(length(input_new()$tf)>1)
-      activity_test1 <- activity_data_cluster()[,3][[1]] # now we only plot the first tf input,
-      # more plots could be generated later
-      # add an activity column
-      forebrain_with_activity <- mutate(input_new()$overall, activity_1 = activity_test1) 
-      
-      ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
-        geom_point(aes(color = activity_1))+
-        scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
-        theme_bw()
+      plot_UMAP(tf_number = 2,input_new()$overall, activity_data_cluster())
       
     })
     
@@ -246,8 +231,7 @@ server <- function(input, output, session) {
     # --------------------------------------Tab3: timeseries-------------------------------------------
     output$timeseries1 <- renderPlot({
       req(length(input_new()$tf)>0)
-      #tf_df <- as_tibble(rownames(activity))
-      # tf_df is loaded at beginning using data_prep.R
+      # tf_df is loaded at beginning by data_prep.R
       TF <- translate_tf(input_new()$tf[1],input_new()$tf_df)
       req(TF)
       plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
