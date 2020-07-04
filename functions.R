@@ -45,7 +45,8 @@ create_network <- function(tf, TF_target_gene, unique_TF){
   
   nodeData <- nodeData %>%
     mutate(color = case_when(id %in% tf ~ "#9d4097",
-                             id %in% unique_TF ~ "#D6604D",
+                             # orange nodes are tfs that are active in this region
+                             id %in% unique_TF ~ "#D6604D", 
                              id %in% mutual_target ~ "#4fafc6",
                              TRUE ~ "lightgrey")) %>%
     mutate(height = case_when(id %in% tf ~ "100",
@@ -357,8 +358,8 @@ plot_UMAP <- function(tf_number, overall_brain_data, cell_activity_data, sample_
 
 #' make cell metadata of certain region, cortex/pon
 #'
-#' @param metadata_part a dataframe, the cell_metadata corresponding to a region: cortex/pon
-#'
+#' @param cell_metadata a dataframe, forebrain_data or pons_data, saved in data_cortex / data_pons
+#' @param part  a string, either "cortex" or "pons"
 #' @return a dataframe/tibble of metadata with columns Age, Cell, Prefix and Cluster, used for plotting
 #' timeseries
 #'
@@ -366,21 +367,30 @@ plot_UMAP <- function(tf_number, overall_brain_data, cell_activity_data, sample_
 #' cell_metadata_cortex <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
 #' cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex)
 #' 
-create_cell_metadata <- function(metadata_part){
-  metadata_part %>% 
-    select(Age = orig.ident, Cell, Cluster = ID_20190730_with_blacklist_and_refined) %>% 
+create_metadata_timeseries <- function(cell_metadata, part){
+  if(part == "cortex") level <- c("Forebrain E12.5",
+                                  "Forebrain E15.5",
+                                  "Forebrain P0",
+                                  "Forebrain P3",
+                                  "Forebrain P6")
+  else if (part == "pons") level <- c("Hindbrain E12.5",
+                                      "Pons E15.5",
+                                      "Pons P0",
+                                      "Pons P3",
+                                      "Pons P6")
+  else{(return("Wrong usage, input either cortex or pons"))}
+  
+  cell_metadata %>% 
+    select(Age = Sample, Cell, Cluster = Sample_cluster) %>% 
     # In this case, we remove the "prefix" of the Cluster column, so that we are
     # simply left with the abbreviation representing the cell type, so that 
     # we can link the cells of the same cell type across ages
     separate(Cluster, into = c("Prefix", "Cluster"), sep = "_") %>% 
-    mutate(Age = factor(Age, levels = c("Forebrain E12.5",
-                                        "Forebrain E15.5",
-                                        "Forebrain P0",
-                                        "Forebrain P3",
-                                        "Forebrain P6"))) %>% 
+    mutate(Age = factor(Age, levels = level)) %>% 
     arrange(Cell)
   
 }
+
 create_cell_metadata_pon <- function(metadata_part){
   metadata_part %>% 
     select(Age = orig.ident, Cell, Cluster = ID_20190715_with_blacklist_and_refined) %>% 
