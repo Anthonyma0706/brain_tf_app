@@ -55,7 +55,7 @@ ui <- fluidPage(
             #actionButton("update_tf", label = "Update transcription factors to see the plots"),
             selectInput(inputId = "TF",
                         label = "transcription factor",
-                        choices = data_cortex$unique_TF,
+                        choices = data_cortex$unique_active_TFs_bare,
                         multiple = TRUE,
                         selected = c("Arx","Lef1")),
             
@@ -119,11 +119,11 @@ server <- function(input, output, session) {
   # Dynamic UI, change the selectInput tf lists on display
   observeEvent(input$region,{
     if(input$region == "cortex"){
-      updateSelectInput(session, inputId = "TF", choices = data_cortex$unique_TF, 
+      updateSelectInput(session, inputId = "TF", choices = data_cortex$unique_active_TFs_bare, 
                         selected = c("Arx","Lef1"))
     }
     else{
-      updateSelectInput(session, inputId = "TF", choices = data_pons$unique_TF, 
+      updateSelectInput(session, inputId = "TF", choices = data_pons$unique_active_TFs_bare, 
                         selected = c("Lhx5","Pax7"))
     }
     updateRadioButtons(session, "show", selected = "stop")
@@ -144,14 +144,7 @@ server <- function(input, output, session) {
     l$region <- input$region
     # l has following elements with same names for both options above:
     # l contains ...
-    # "overall" = pon_data,
-    # "TF_and_ext" = TF_and_ext_pon,
-    # "TF_target_gene" = TF_target_gene_pon,
-    # "unique_TF" = unique_TF_pon,
-    # "TF_active" = TF_active_pon,
-    # "tf_df" = tf_df_pon,
-    # "cell_metadata" = cell_metadata_pon,
-    # "binary_activity" = binary_activity_pon
+    
     # We will use the same name attributes to retrieve data
     return (l)
     })
@@ -161,7 +154,7 @@ server <- function(input, output, session) {
   # -----------------------------Tab1:table and network------------------------------------------
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      datatable(dplyr::filter(input_new()$TF_target_gene, TF %in% input_new()$tf))
+      datatable(dplyr::filter(input_new()$TF_target_gene_info, TF %in% input_new()$tf))
     })
     
     
@@ -173,20 +166,20 @@ server <- function(input, output, session) {
     nodeData <- eventReactive(input$show,{
       req(input$show)
       if(input$show == "all"){
-        create_network(input_new()$tf, input_new()$TF_target_gene,
-                       input_new()$unique_TF)$nodes
+        create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                       input_new()$unique_active_TFs_bare)$nodes
       }
       else{
-        create_network(input_new()$tf, input_new()$TF_target_gene,
-                       input_new()$unique_TF)$nodes %>%
+        create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                       input_new()$unique_active_TFs_bare)$nodes %>%
           filter(color!="lightgrey")
       }
     })
     output$network <- renderRcytoscapejs({
       
       nodeData <- nodeData()
-      edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene,
-                                 input_new()$unique_TF)$edges
+      edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                                 input_new()$unique_active_TFs_bare)$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
  
@@ -197,13 +190,13 @@ server <- function(input, output, session) {
    
     output$heatmap_cell <- renderPlot({
       req("Cell" %in% input$method)
-      plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$overall,
+      plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata,
                    cell_plot_num = input$num_cell_plot)
     })
     
     output$heatmap_cluster <- renderPlot({
       req("Cluster" %in% input$method)
-      plot_heatmap(input_new()$tf, "Cluster",input_new()$region, input_new()$TF_and_ext,input_new()$overall)
+      plot_heatmap(input_new()$tf, "Cluster",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata)
                    
     })
   
@@ -216,13 +209,13 @@ server <- function(input, output, session) {
     
     output$cluster1 <- renderPlot({
       req(length(input_new()$tf)>0)
-      plot_UMAP(tf_number = 1,input_new()$overall, activity_data_cluster())
+      plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
       
     })
     
     output$cluster2 <- renderPlot({
       req(length(input_new()$tf)>1)
-      plot_UMAP(tf_number = 2,input_new()$overall, activity_data_cluster())
+      plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
       
     })
     
@@ -231,24 +224,24 @@ server <- function(input, output, session) {
     # --------------------------------------Tab3: timeseries-------------------------------------------
     output$timeseries1 <- renderPlot({
       req(length(input_new()$tf)>0)
-      # tf_df is loaded at beginning by data_prep.R
-      TF <- translate_tf(input_new()$tf[1],input_new()$tf_df)
+      # binary_active_TFs is loaded at beginning by data_prep.R
+      TF <- translate_tf(input_new()$tf[1],input_new()$binary_active_TFs)
       req(TF)
-      plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
+      plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity)
  
     })
     output$timeseries2 <- renderPlot({
       req(length(input_new()$tf)>1)
-      TF <- translate_tf(input_new()$tf[2],input_new()$tf_df)
+      TF <- translate_tf(input_new()$tf[2],input_new()$binary_active_TFs)
       req(TF)
-      plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
+      plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity)
       
     })
     output$timeseries3 <- renderPlot({
       req(length(input_new()$tf)>2)
-      TF <- translate_tf(input_new()$tf[3],input_new()$tf_df)
+      TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
       req(TF)
-      plot_timeseries(TF,input_new()$cell_metadata, input_new()$binary_activity)
+      plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity)
       
     })
     
