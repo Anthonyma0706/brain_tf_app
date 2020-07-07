@@ -19,24 +19,41 @@ More details of functions of each tab will be shown later, with major aspects: u
 Main modifications:
 - combine pons and cortex datasets together, they have the same format for all data, choose the data structure to save them and assign in app.R using list  
 - add options of plotting by cell or cluster in the second tab, add color palette designed/commonly recognized in Kleinman lab  
-- write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets
-- 
+- write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets  
 
-Further issue/modification required: 
-- heatmap, show a picture of the cluster color palette
+Further issue/modification required:   
+- install packages on server ...  
+- add controls for the size of heatmaps... (width, height ...) -> maybe see complex heatmap if it has better control options interactively  
+- heatmap, show a picture of the cluster color palette  
 - tab1: display an additional table for the graph network  
-- Modify tab3 function to suit the pons data
-- modify R markdown file to add the paramters of functions since we've changed the function parameters
+- Modify tab3 function to suit the pons data  
 - - plotly, complex heatmap features to be applied in this app  
-- support multiple plots of scatterplot in tab2 also add a title name by the tf
-- error message? Use a function? Any example online?
-  + show error of missing TFs?  
+- support multiple plots of scatterplot in tab2 also add a title name by the tf  
+- error message? Use a function? Any example online?  
+  + show error of missing TFs?   
   + in psuedotime?  
   + add explanation of the missing TF in activity_cell datasets  
 - consider some customization features (CSS...) since we've had a good prototype that supports basic functionality  
+- get a taste of some real research activitie, maybe using what I developed...  
 
+Issue July 4:
+```
+# cell_metadata_cortex_test is made using forebrain_data, cell_metadata_cortex is made using the new datasets
+# F-p0 INIP, the space between the datasets cause the wrong performance when separating using the '_' delimitor
 
+# metadata specific for each cell, corresponding to the activity data
+forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv") %>%
+  mutate(Sample_cluster = str_replace(Sample_cluster," ","_"))
 
+cell_metadata_cortex_test <- create_metadata_timeseries(forebrain_data, "cortex")
+
+cell_metadata_cortex_prep <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
+cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex_prep)
+
+setdiff(cell_metadata_cortex_test, cell_metadata_cortex)
+filter(cell_metadata_cortex_test, is.na(Cluster)) # has 534 NA value
+filter(cell_metadata_cortex, is.na(Cluster)) # has no NA value, better datasets...
+```
 ## To-do list and questions: 
 
 ### things need to learn: 
@@ -92,7 +109,7 @@ Further issue/modification required:
 - display a small table of datasets for demonstration - success
 - implementation of UMAP into code, any package? - no need for it, just two columns of forehead data  
 - assign training sets to the corresponding tab/plot  
-- Detailed definition of joint cortex? - have 5 time plots of pon and forebrain cluster data then join them again into a whole plot to see the overall relations and correlations of each cell
+- Detailed definition of joint cortex? - have 5 time plots of pon and forebrain cluster data then join them again into a whole plot to see the relations and correlations of each cell
 
 ## Library, remember to install rcytoscapejs2 from github first
 ```{r, message= FALSE}
@@ -154,8 +171,8 @@ Vector of transcription factors declared as active in the sample
 
 ### 4. TF's target gene data
 ```{r,results='asis', message= FALSE}
-TF_target_gene <- read_rds("data/joint_cortex/joint_cortex.regulon_target_info.Rds")
-knitr::kable(TF_target_gene[1:5,], caption = "Table demo")
+TF_target_gene_info <- read_rds("data/joint_cortex/joint_cortex.regulon_target_info.Rds")
+knitr::kable(TF_target_gene_info[1:5,], caption = "Table demo")
 ```
 
 Table indicating the targets ("gene") for each transcription factor ("TF"), and information about the target, including weight and activity
@@ -182,7 +199,7 @@ The first column changes to cell, we use this for the UMAP cluster scatterplot i
 # Tabs
 ## Tab1. table and network
 - discription: Given user's TF input, display a table of genes associated with that TF and a network graph visualization displaying detailed information with node color and edge thickness 
-- data: 4. TF_target_gene; 5. Activity per cluster
+- data: 4. TF_target_gene_info; 5. Activity per cluster
 - input: a transcription factor, chosen from (3. Active TF data) vector TF_active
 - **package**:  
 ```
@@ -192,15 +209,15 @@ library(rcytoscapejs2)
 ```
 ```{r}
 input_tf <- c("Lhx5","Pax7")
-datatable(dplyr::filter(data_pons$TF_target_gene, TF %in% input_tf))
+datatable(dplyr::filter(data_pons$TF_target_gene_info, TF %in% input_tf))
 
 ```
 
 ```{r}
 TF <- c("Lhx5","Pax7")
 
-nodeData <- create_network(TF, data_pons$TF_target_gene, data_pons$unique_TF)$nodes
-edgeData <- create_network(TF, data_pons$TF_target_gene, data_pons$unique_TF)$edges
+nodeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare)$nodes
+edgeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare)$edges
 network <- createCytoscapeJsNetwork(nodeData, edgeData)
 rcytoscapejs2(network$nodes, network$edges)
 
@@ -215,7 +232,7 @@ library(shiny)
 library(ggplot2)
 library(pheatmap)
 ```
-- data: 4.TF_target_gene, 5. Activity per cluster, 6. Activity per cell
+- data: 4.TF_target_gene_info, 5. Activity per cluster, 6. Activity per cell
 - input: a transcription factor, chosen from (3. Active TF data) vector TF_active
 - output: 
   1. A heatmap that, given a specific TF, we filter the activity_cluster datasets with this TF then display a heatmap that shows the level of activity featured by NES(score). You will see a gradient of color which makes a great straightforwad visualization.  
@@ -259,7 +276,7 @@ pheatmap::pheatmap(t(act_cluster),
 ```{r}
 #,"Atf3","Dlx1","Olig2","Lef1","Hes6",
 act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell","cortex", data_cortex$TF_and_ext) %>%
-  mutate(Cluster = gsub("_"," ",data_cortex$overall[["Sample_cluster"]])) %>%
+  mutate(Cluster = gsub("_"," ",data_cortex$cell_metadata[["Sample_cluster"]])) %>%
   filter(!grepl("BLACKLIST", Cluster)) %>%
    sample_n(300) %>%
   tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
@@ -333,19 +350,38 @@ pheatmap(test, annotation_col = annotation_col, annotation_row = annotation_row)
 
 tf <- c("Arx","Lef1")
 activity_test_tf1 <- create_activity_data(tf, "Cell","cortex", data_cortex$TF_and_ext)
-plot_UMAP(tf_number = 2,data_cortex$overall, activity_test_tf1)
+library(repr)
+options(repr.plot.width = 4, repr.plot.height = 8)
+plot_UMAP(tf_number = 2,data_cortex$cell_metadata, activity_test_tf1)
 
 
 
 
 
 ```  
+```{r}
+df_1 <- data.frame(x=c(5, 6, 7, 8, 9), y = c(200, 225, 250, 270, 310))
 
+options(repr.plot.width = 1, repr.plot.height = 0.75)
+ggplot(df_1, aes(x = x, y = y)) + geom_point(size = 0.3) + 
+   theme(text = element_text(size = 3), element_line(size = 0.1))
+
+```
+
+```{r}
+
+df_1 = data.frame(x=c(5, 6, 7, 8, 9), y = c(200, 225, 250, 270, 310))
+
+options(repr.plot.width = 4, repr.plot.height = 3)
+ggplot(df_1, aes(x = x, y = y)) + geom_point(size = 0.3) + 
+  theme(text = element_text(size = 12), element_line(size = 0.4))
+
+```
 
 
 ```{r,results='asis', message= FALSE, echo = TRUE}
 activity_test_pon <- create_activity_data("Lef1", "Cell","pons", data_pons$TF_and_ext)
-plot_UMAP(tf_number = 1,data_pons$overall, activity_test_pon)
+plot_UMAP(tf_number = 1,data_pons$cell_metadata, activity_test_pon)
 
  
 ```
@@ -360,7 +396,7 @@ plot_UMAP(tf_number = 1,data_pons$overall, activity_test_pon)
 library(shiny)
 library(ggplot2)
 ```
-- data: 4.TF_target_gene, 5. Activity per cluster, 6. Activity per cell
+- data: 4.TF_target_gene_info, 5. Activity per cluster, 6. Activity per cell
 - input: a transcription factor, chosen from (3. Active TF data) vector TF_active
 - output: A time series plot of TF activity in pseudotime
 ![alt text](data/image/timeseries_1.png)  
@@ -440,50 +476,24 @@ head(cell_metadata)
 Make the plot:
 
 ```{r, fig.width = 10, fig.height = 8}
+tf_df <- as_tibble(rownames(data_cortex$binary_activity))
+TF <- translate_tf("Lef1",tf_df)
+binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
+# cell_metadata_cortex <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
+# cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex)
+plot_timeseries(TF,data_cortex$timeseries_input_meta, data_cortex$binary_activity)
 
-# Calculate for each cell type, the proportion of cells where the 
-# TF is active
-ribbon_df_celltype_frac <- ribbon_df %>% 
-  group_by(Age) %>% 
-  # Total cells at each age
-  mutate(total = n()) %>% 
-  group_by(Age, Cluster) %>%
-  # Proportion of TF+ cells per cluster, per age
-  mutate(frac = sum(TF > 0) / total) %>% 
-  distinct(Age, Cluster, frac) %>% 
-  ungroup()
+activity <- data_pons$binary_activity
 
-ribbon_df_cum_frac <- ribbon_df %>% 
-  group_by(Age) %>% 
-  summarize(cumfrac = sum(TF > 0) / n()) %>% 
-  ungroup()
+# must remove the extra cell
+timeseries_input_meta_pons <- create_metadata_timeseries(data_pons$cell_metadata,"pons") %>%
+  filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
 
-timepoints2 <- ribbon_df$Age
-clusters <- ribbon_df$Cluster
+setdiff(cell_metadata_pon,timeseries_input_meta_pons)
 
-df = data.frame(cluster = rep(unique(clusters), length(unique(timepoints2))),
-                stage = do.call(c, lapply(as.character(unique(timepoints2)), rep, times = length(unique(clusters)))))
+TF <- translate_tf("Pax6",data_pons$binary_active_TFs)
 
-df$ranking = match(df$cluster, names(colours))
-df = df[order(df$stage, df$ranking),]
-
-df <- left_join(df, select(ribbon_df_celltype_frac, cluster = Cluster, stage = Age, frac)) %>% 
-  mutate(frac = replace_na(frac, 0)) %>% 
-  left_join(select(ribbon_df_cum_frac, stage = Age, cumfrac))
-
-df$xpos = match(df$stage, unique(timepoints2))
-
-df %>%
-  ggplot(aes(x = xpos, y = frac, fill = cluster)) +
-  geom_area(stat = "identity") +
-  scale_fill_manual(values = colour_palette, drop = FALSE, name = "") +
-  scale_x_continuous(breaks = seq_along(unique(df$stage)),
-                     labels = c("E12.5", "E15.5", "P0", "P3", "P6"),
-                     limits = c(1, length(unique(df$stage)))) +
-  labs(x = "age", y = "Binary activity", title = TF) +
-  guides(fill = guide_legend(ncol = 5)) +
-  theme(legend.position = "bottom")
-
+plot_timeseries(TF, data_pons$timeseries_input_meta, data_pons$binary_activity)
 ```
 Plot by **pseudotime**: cells that captured at same time will vary vastly in their stage in development progress. To avoid this problem, rather than ploting the changes according to the age, we plot as a function of progress with respect to each cell along its own trajectory, which we term "pseudotime".
 
