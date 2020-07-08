@@ -23,7 +23,7 @@
 #' network <- createCytoscapeJsNetwork(nodeData, edgeData)
 #' rcytoscapejs2(network$nodes, network$edges)
 #' 
-create_network <- function(tf, TF_target_gene, unique_TF){ 
+create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway){ 
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
   
@@ -44,8 +44,9 @@ create_network <- function(tf, TF_target_gene, unique_TF){
     .[[1]]
   
   nodeData <- nodeData %>%
-    mutate(color = case_when(id %in% tf ~ "#9d4097",
+    mutate(color = case_when(id %in% tf ~ "#9d4097", # orange
                              # orange nodes are tfs that are active in this region
+                             id %in% tf_pathway ~ "green",
                              id %in% unique_TF ~ "#D6604D", 
                              id %in% mutual_target ~ "#4fafc6",
                              TRUE ~ "lightgrey")) %>%
@@ -440,7 +441,8 @@ translate_tf <- function(tf, tf_dataframe){
 
 #' Plot timeseries
 #'
-#' @param TF a character vector that contains one or multiple TF names
+#' @param TF a character vector that contains one or multiple TF names, that may need to be 
+#' transformed ny translate_tf function to change its string form
 #' @param cell_metadata cell_metadata_cortex, loaded in data_prep.R, a dataframe
 #' with Age, Cell, Prefix, Cluster columns, this data is specific to forebrain cells/pon cells
 #' @param activity loaded in data_prep.R
