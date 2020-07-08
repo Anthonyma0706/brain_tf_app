@@ -175,8 +175,9 @@ server <- function(input, output, session) {
     
     
     output$desc <- renderText({
-      text <- "Orange nodes are genes that express its own transcription factors; " %>%
+      text <- "Orange nodes are active transcription factors(tf genes that express their own tf); " %>%
         paste("Purple nodes in the center are your input transcription factors; ") %>%
+        paste("Green nodes are your input genes related to input tfs(purple nodes); ") %>%
         paste("grey nodes are other genes.")
     })
     nodeData <- reactive(
