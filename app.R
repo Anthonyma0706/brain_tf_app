@@ -65,9 +65,17 @@ ui <- fluidPage(
                                           # use the names in the vector to display
                                           # use the character "joint_cortex" to match the path to import data
                                           choices = c("show all nodes" = "all",
+                                                      #"color by user's input tf list" = "pathway",
                                                       "neglect graynodes " = "neglect",
+                                                      
                                                       "stop showing" = "stop"),
-                                          selected = "stop")#,
+                                          selected = "stop"),#,
+                             checkboxInput("show_pathway","color by user's input genes list",
+                                           TRUE),
+                             selectInput("input_pathway", "input your interested genes pathway",
+                                         choices = data_cortex$unique_active_TFs_bare,
+                                         multiple = TRUE,
+                                         selected = c("Arx","Lef1"))
                              #actionButton("update_graph", label = "See the network graph")
                              ),
             # 2. heatmap and clustering
@@ -121,13 +129,20 @@ server <- function(input, output, session) {
     if(input$region == "cortex"){
       updateSelectInput(session, inputId = "TF", choices = data_cortex$unique_active_TFs_bare, 
                         selected = c("Arx","Lef1"))
+      updateSelectInput(session, inputId = "input_pathway", choices = unique(data_cortex$TF_target_gene_info$gene), 
+                          selected = c("Dlx6","Sox6") )
+      
     }
     else{
       updateSelectInput(session, inputId = "TF", choices = data_pons$unique_active_TFs_bare, 
                         selected = c("Lhx5","Pax7"))
+      updateSelectInput(session, inputId = "input_pathway", choices = unique(data_pons$TF_target_gene_info$gene), 
+                        selected = c("Gad2"))
+      
     }
     updateRadioButtons(session, "show", selected = "stop")
   })
+  
   
   
   input_new <- eventReactive(input$update,{
@@ -142,6 +157,7 @@ server <- function(input, output, session) {
     
     l$tf <- input$TF
     l$region <- input$region
+    l$input_pathway <- input$input_pathway
     # l has following elements with same names for both options above:
     # l contains ...
     
@@ -163,20 +179,28 @@ server <- function(input, output, session) {
         paste("Purple nodes in the center are your input transcription factors; ") %>%
         paste("grey nodes are other genes.")
     })
-    nodeData <- eventReactive(input$show,{
-      req(input$show)
+    nodeData <- reactive(
+      #input$show,
+      {
+
+      if(input$show_pathway){input_pathway <- input_new()$input_pathway}
+      else{input_pathway <- c()}
+      
       if(input$show == "all"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
-                       input_new()$unique_active_TFs_bare)$nodes
+                       input_new()$unique_active_TFs_bare,
+                       input_pathway = input_pathway)$nodes
       }
-      else{
+      else if(input$show == "neglect"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
-                       input_new()$unique_active_TFs_bare)$nodes %>%
+                       input_new()$unique_active_TFs_bare,
+                       input_pathway = input_pathway)$nodes %>%
           filter(color!="lightgrey")
       }
+        
     })
     output$network <- renderRcytoscapejs({
-      
+      req(nodeData())
       nodeData <- nodeData()
       edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
                                  input_new()$unique_active_TFs_bare)$edges
