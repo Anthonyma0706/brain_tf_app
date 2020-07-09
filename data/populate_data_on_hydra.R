@@ -1,4 +1,19 @@
 
+# Script to populate the data directory for this app.
+#   - Reads the data ontology in data.json
+#   - Creates necessary subdirectories
+#   - Identifies which files need to be copied over from elsewhere on the server
+#   - Prints a command to copy the files to the right place
+#
+# Usage:
+# 1. Run the script from within the data directory with:
+# $ Rscript populate_data_on_hydra.R
+#
+# 2. Copy and execut the cp commands
+#
+# 3. Run the data_prep.R within the data directory with:
+# $ Rscript data_prep.R
+
 library(dplyr)
 library(tidyr)
 library(magrittr)
