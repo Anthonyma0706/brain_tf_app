@@ -17,26 +17,31 @@ More details of functions of each tab will be shown later, with major aspects: u
 
 ## Second phase after prototype:  
 Main modifications:
-- combine pons and cortex datasets together, they have the same format for all data, choose the data structure to save them and assign in app.R using list  
+- organize data: combine pons and cortex datasets together, they have the same format for all data, choose the data structure to save them and assign in app.R using list  
+  + update: make names in the list informative  
 - add options of plotting by cell or cluster in the second tab, add color palette designed/commonly recognized in Kleinman lab  
 - write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets  
 
-Further issue/modification required:   
-- install packages on server ...  
+Further issue/modification required:  
+- github branch setup, delete app.R?
+- apply plotly on timeseries plot, see the cell types and how many cells are at the timepoints  
+- some missing data of tf in each tabs, shall I change the input vector or give the lists of tfs that don't exist in a particular tab, or 
+- analyze by pathways... done  
+- install packages on server    
 - add controls for the size of heatmaps... (width, height ...) -> maybe see complex heatmap if it has better control options interactively  
 - heatmap, show a picture of the cluster color palette  
 - tab1: display an additional table for the graph network  
-- Modify tab3 function to suit the pons data  
-- - plotly, complex heatmap features to be applied in this app  
+- Modify tab3 function to suit the pons data  -- done  
+- - plotly, complex heatmap features to be applied in this app, what features are good to be added?  
 - support multiple plots of scatterplot in tab2 also add a title name by the tf  
 - error message? Use a function? Any example online?  
   + show error of missing TFs?   
   + in psuedotime?  
   + add explanation of the missing TF in activity_cell datasets  
 - consider some customization features (CSS...) since we've had a good prototype that supports basic functionality  
-- get a taste of some real research activitie, maybe using what I developed...  
+- get a taste of some real research activities, maybe using what I developed...feasibility and the process...ask prof and Selin  
 
-Issue July 4:
+Issue July 4: --  solved  
 ```
 # cell_metadata_cortex_test is made using forebrain_data, cell_metadata_cortex is made using the new datasets
 # F-p0 INIP, the space between the datasets cause the wrong performance when separating using the '_' delimitor
@@ -215,9 +220,10 @@ datatable(dplyr::filter(data_pons$TF_target_gene_info, TF %in% input_tf))
 
 ```{r}
 TF <- c("Lhx5","Pax7")
+tf_pathway <- c("Gad2")
 
-nodeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare)$nodes
-edgeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare)$edges
+nodeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare, tf_pathway)$nodes
+edgeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare, tf_pathway)$edges
 network <- createCytoscapeJsNetwork(nodeData, edgeData)
 rcytoscapejs2(network$nodes, network$edges)
 
@@ -348,10 +354,11 @@ pheatmap(test, annotation_col = annotation_col, annotation_row = annotation_row)
 ```{r,results='asis', message= FALSE, echo = TRUE}
 # the first col is Cell [,1][1], so we use [2,1][1] for the first tf in the tf vector
 
-tf <- c("Arx","Lef1")
+tf <- c("Arx","Lef1","Dlx1")
 activity_test_tf1 <- create_activity_data(tf, "Cell","cortex", data_cortex$TF_and_ext)
-library(repr)
-options(repr.plot.width = 4, repr.plot.height = 8)
+activity_test_tf1[,4]
+ncol(activity_test_tf1)
+
 plot_UMAP(tf_number = 2,data_cortex$cell_metadata, activity_test_tf1)
 
 
@@ -380,10 +387,13 @@ ggplot(df_1, aes(x = x, y = y)) + geom_point(size = 0.3) +
 
 
 ```{r,results='asis', message= FALSE, echo = TRUE}
-activity_test_pon <- create_activity_data("Lef1", "Cell","pons", data_pons$TF_and_ext)
-plot_UMAP(tf_number = 1,data_pons$cell_metadata, activity_test_pon)
+TF <- c("Lef1", "Arx", "Dlx1")
+activity_test_pon <- create_activity_data(TF, "Cell","pons", data_pons$TF_and_ext)
 
- 
+activity_test_pon[,2]
+p <- plot_UMAP(tf_number = 1,data_pons$cell_metadata, activity_test_pon)
+ggplotly(p)
+ activity_test_pon
 ```
 
 
@@ -478,22 +488,98 @@ Make the plot:
 ```{r, fig.width = 10, fig.height = 8}
 tf_df <- as_tibble(rownames(data_cortex$binary_activity))
 TF <- translate_tf("Lef1",tf_df)
-binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
+binary_activity <- data_cortex$binary_activity
 # cell_metadata_cortex <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
 # cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex)
-plot_timeseries(TF,data_cortex$timeseries_input_meta, data_cortex$binary_activity)
+ggplotly(plot_timeseries(TF,data_cortex$timeseries_input_meta, data_cortex$binary_activity))
 
 activity <- data_pons$binary_activity
 
-# must remove the extra cell
-timeseries_input_meta_pons <- create_metadata_timeseries(data_pons$cell_metadata,"pons") %>%
-  filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
-
-setdiff(cell_metadata_pon,timeseries_input_meta_pons)
+# # must remove the extra cell
+# timeseries_input_meta_pons <- create_metadata_timeseries(data_pons$cell_metadata,"pons") %>%
+#   filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
+# 
+# setdiff(cell_metadata_pon,timeseries_input_meta_pons)
 
 TF <- translate_tf("Pax6",data_pons$binary_active_TFs)
 
-plot_timeseries(TF, data_pons$timeseries_input_meta, data_pons$binary_activity)
+p <- plot_timeseries(TF, data_pons$timeseries_input_meta, data_pons$binary_activity)
+library(plotly)
+ggplotly(p)
+translate_tf(rownames(data_pons$binary_activity), data_pons$binary_active_TFs)
+rownames(data_pons$binary_activity)
+
+data_pons$binary_active_TFs
+tf_converted <- translate_tf(data_pons$unique_active_TFs_bare,data_pons$binary_active_TFs)
+
+ 
+```
+```{r}
+l <- c()
+l_nexist <- c()
+
+for (tf in data_pons$unique_active_TFs_bare){
+ tf_after <- translate_tf(tf,data_pons$binary_active_TFs)
+  if(tf_after !=FALSE ){
+    l <- c(l, tf)
+  }
+ else{l_nexist<- c(l_nexist,tf)}
+}
+l # unique_active_TFs_bare after converting the type in pons data
+l_nexist # tfs not exist in the binary_active datasets
+length(data_pons$unique_active_TFs_bare) # without types
+length(data_pons$binary_active_TFs[[1]]) # with types, 86
+length(l) # 86, same as 
+
+tf_input <- c("Cbfb", "Creb3", "Creb5")
+tf_nexist <- ""
+for(tf in tf_input){
+    if (tf %in% l_nexist){
+      tf_nexist <- paste(tf_nexist,tf,sep = " ")
+    }
+}
+tf_nexist
+glue('Those tfs does not not exist in our datasets: {tf_nexist}')
+
+if(tf_nexist == ""){
+  
+}
+
+```
+
+
+install SIN
+```{r}
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::version()
+# If your bioconductor version is previous to 3.9, see the section bellow
+
+BiocManager::install(c("AUCell", "RcisTarget"))
+BiocManager::install(c("GENIE3")) # Optional
+# Also required:
+install.packages('zoo')
+
+# Recommended to run AUCell:
+BiocManager::install(c("mixtools", "rbokeh"))
+# For various visualizations and perform t-SNEs:
+BiocManager::install(c("DT", "NMF", "pheatmap", "R2HTML", "Rtsne"))
+# To support paralell execution (not available in Windows):
+BiocManager::install(c("doMC", "doRNG"))
+# To export/visualize in http://scope.aertslab.org
+if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+devtools::install_github("aertslab/SCopeLoomR", build_vignettes = TRUE)
+
+# regulons <- loadInt(scenicOptions, "regulons")
+# regulons[c("Dlx5", "Irf1")]
+packageVersion("AUCell")
+packageVersion("RcisTarget")
+packageVersion("GENIE3")
+if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+
+devtools::install_github("aertslab/SCENIC", ref="v1.1.1") # To specify a version: ref="v1.1.0"
+packageVersion("SCENIC")
+
+
 ```
 Plot by **pseudotime**: cells that captured at same time will vary vastly in their stage in development progress. To avoid this problem, rather than ploting the changes according to the age, we plot as a function of progress with respect to each cell along its own trajectory, which we term "pseudotime".
 

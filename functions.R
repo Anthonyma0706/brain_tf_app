@@ -23,7 +23,7 @@
 #' network <- createCytoscapeJsNetwork(nodeData, edgeData)
 #' rcytoscapejs2(network$nodes, network$edges)
 #' 
-create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway){ 
+create_network <- function(tf, TF_target_gene, unique_TF, input_pathway=c()){ 
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
   
@@ -46,7 +46,7 @@ create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway){
   nodeData <- nodeData %>%
     mutate(color = case_when(id %in% tf ~ "#9d4097", # orange
                              # orange nodes are tfs that are active in this region
-                             id %in% tf_pathway ~ "green",
+                             id %in% input_pathway ~ "green",
                              id %in% unique_TF ~ "#D6604D", 
                              id %in% mutual_target ~ "#4fafc6",
                              TRUE ~ "lightgrey")) %>%
@@ -338,17 +338,20 @@ plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num
 #' activity_test_tf1 <- create_activity_data(tf, "Cell","cortex", data_cortex$TF_and_ext)
 #' plot_UMAP(tf_number = 1,data_cortex$overall, activity_test_tf1)
 #' 
-plot_UMAP <- function(tf_number, overall_brain_data, cell_activity_data, sample_number = 13000){
-  if(tf_number == 1) tf_plot <- 2
+plot_UMAP <- function(tf_number, cell_metadata, cell_activity_data, sample_number = 13000,
+                      sample_reduce = TRUE){
+  if(tf_number == 1) tf_plot <- 2 # number of col, the first col is Cell, so start from 2
   else if(tf_number == 2) tf_plot <- 3
   else{return(
     "Wrong usage, now we only support plotting two tfs since the scatterplot is big"
   )}
+
+  if(! sample_reduce) sample_number <- 27000
   
   activity_tf <- cell_activity_data[,tf_plot][[1]]
-  forebrain_with_activity <- mutate(overall_brain_data, activity_tf = activity_tf) %>%
+  cell_meta_with_activity <- mutate(cell_metadata, activity_tf = activity_tf) %>%
     sample_n(sample_number)
-  ggplot(data = forebrain_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
+  ggplot(data = cell_meta_with_activity, mapping = aes(x=UMAP1,y=UMAP2))+
     geom_point(aes(color = activity_tf))+
     scale_color_gradientn(colors = rev(grDevices::colorRampPalette(RColorBrewer::brewer.pal(8, "RdBu"))(n = 100)))+
     theme_bw()
@@ -392,21 +395,21 @@ create_metadata_timeseries <- function(cell_metadata, part){
   
 }
 
-create_cell_metadata_pon <- function(metadata_part){
-  metadata_part %>% 
-    select(Age = orig.ident, Cell, Cluster = ID_20190715_with_blacklist_and_refined) %>% 
-    # In this case, we remove the "prefix" of the Cluster column, so that we are
-    # simply left with the abbreviation representing the cell type, so that 
-    # we can link the cells of the same cell type across ages
-    separate(Cluster, into = c("Prefix", "Cluster"), sep = "_") %>% 
-    mutate(Age = factor(Age, levels = c("Hindbrain E12.5",
-                                        "Pons E15.5",
-                                        "Pons P0",
-                                        "Pons P3",
-                                        "Pons P6"))) %>% 
-    arrange(Cell)
-  
-}
+# create_cell_metadata_pon <- function(metadata_part){
+#   metadata_part %>% 
+#     select(Age = orig.ident, Cell, Cluster = ID_20190715_with_blacklist_and_refined) %>% 
+#     # In this case, we remove the "prefix" of the Cluster column, so that we are
+#     # simply left with the abbreviation representing the cell type, so that 
+#     # we can link the cells of the same cell type across ages
+#     separate(Cluster, into = c("Prefix", "Cluster"), sep = "_") %>% 
+#     mutate(Age = factor(Age, levels = c("Hindbrain E12.5",
+#                                         "Pons E15.5",
+#                                         "Pons P0",
+#                                         "Pons P3",
+#                                         "Pons P6"))) %>% 
+#     arrange(Cell)
+#   
+# }
 
 
 #' Translate transcription factor name version
@@ -442,19 +445,18 @@ translate_tf <- function(tf, tf_dataframe){
 #' Plot timeseries
 #'
 #' @param TF a character vector that contains one or multiple TF names, that may need to be 
-#' transformed ny translate_tf function to change its string form
+#' transformed by translate_tf function to change its string form
 #' @param cell_metadata cell_metadata_cortex, loaded in data_prep.R, a dataframe
 #' with Age, Cell, Prefix, Cluster columns, this data is specific to forebrain cells/pon cells
-#' @param activity loaded in data_prep.R
+#' @param activity binary_activity data, loaded in data_prep.R
 #'
 #' @return a plot that displays the percentage level of that tf along with several the time points
 #'
 #' @examples
 #' tf_df <- as_tibble(rownames(activity))
 #' TF <- translate_tf("Lef1",tf_df)
-#' binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
-#' cell_metadata_cortex <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
-#' cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex)
+#' binary_activity <- data_cortex$binary_activity
+#' cell_metadata_cortex <- create_metadata_timeseries(data_cortex$cell_metadata, "cortex")
 #' plot_timeseries(TF,cell_metadata_cortex, binary_activity)
 #' 
 plot_timeseries <- function(TF,cell_metadata, activity){

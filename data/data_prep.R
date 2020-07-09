@@ -59,7 +59,15 @@ timeseries_input_meta_cortex <- create_metadata_timeseries(forebrain_data, "cort
 binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
 tf_df <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the tf with 
 # best representation of its identity in the binary_activity dataset
-
+l <- c()
+l_nexist_cortex <- c()
+for (tf in data_cortex$unique_active_TFs_bare){
+  tf_after <- translate_tf(tf,data_cortex$binary_active_TFs)
+  if(tf_after !=FALSE ){
+    l <- c(l, tf)
+  }
+  else{l_nexist_cortex<- c(l_nexist,tf)}
+}
 
 # ----------------------------------Pon data-------------------------------------------------------
 
@@ -92,6 +100,17 @@ binary_activity_pon <- readRDS("data/joint_pons/joint_pons.binaryRegulonActivity
 tf_df_pon <- as_tibble(rownames(binary_activity_pon)) #a dataframe that contains all the tf with 
 # best representation of its identity in the binary_activity dataset
 
+l <- c()
+l_nexist_pons <- c()
+for (tf in data_pons$unique_active_TFs_bare){
+  tf_after <- translate_tf(tf,data_pons$binary_active_TFs)
+  if(tf_after !=FALSE ){
+    l <- c(l, tf)
+  }
+  else{l_nexist_pons<- c(l_nexist,tf)}
+}
+
+
 
 # make two lists containing same name (will be assigned to a reactive list),
 # then we can use the same name to code
@@ -103,7 +122,8 @@ data_cortex <- list(
   "active_TFs" = TF_active,
   "binary_active_TFs" = tf_df,
   "timeseries_input_meta" = timeseries_input_meta_cortex,
-  "binary_activity" = binary_activity
+  "binary_activity" = binary_activity,
+  "tfs_not_exist_timeseries" = l_nexist_cortex
 
 )
 
@@ -115,7 +135,8 @@ data_pons <- list(
   "active_TFs" = TF_active_pon,
   "binary_active_TFs" = tf_df_pon,
   "timeseries_input_meta" = timeseries_input_meta_pons,
-  "binary_activity" = binary_activity_pon
+  "binary_activity" = binary_activity_pon,
+  "tfs_not_exist_timeseries" = l_nexist_pons
   
 )
 
