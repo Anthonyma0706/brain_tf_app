@@ -123,6 +123,48 @@ server <- function(input, output, session) {
     
     
     # --------------------------------------Tab3: timeseries-------------------------------------------
+    # tf_nexist_data <- reactive({
+    #   tf_nexist <- ""
+    #   for(tf in input_new()$tf){
+    #     if (tf %in% input_new()$tfs_not_exist_timeseries){
+    #       tf_nexist <- paste(tf_nexist,tf,sep = " ")
+    #     }
+    #   }
+    # })
+    tf_desc_timeseries <- reactive({
+      tf_nexist_string <- ""
+      for(tf_n in input_new()$tfs_not_exist_timeseries){
+        tf_nexist_string <- paste(tf_nexist_string,tf_n,sep = " " )
+      }
+      text <- glue("We do not have these followning tfs in this tab: {tf_nexist_string}")
+      
+      # tf_nexist <- ""
+      # for(tf in input_new()$tf){
+      #   if (tf %in% input_new()$tfs_not_exist_timeseries){
+      #     tf_nexist <- paste(tf_nexist,tf,sep = " ")
+      #   }
+      # }
+      # 
+      # if(tf_nexist == ""){
+      #   text <- "Good! All of your input tfs exist in our timeseries activity datasets!"
+      # }
+      # else{
+      #   # tf_nexist_string <- ""
+      #   # for(tf_n in input_new()$tfs_not_exist_timeseries){
+      #   #   tf_nexist_string <- paste(tf_nexist_string,tf_n,sep = " " )
+      #   # }
+      #   text <- glue('Those tfs in your input list does not not exist in our 
+      #              timeseries datasets: {tf_nexist}.
+      #              We do not have these followning tfs in this tab: {tf_nexist_string}')
+      # }
+    })
+    
+    output$tf_timeseries_desc <- renderText({
+      tf_desc_timeseries()
+      
+    })
+    
+    
     output$timeseries_desc <- renderText({
       text <- "Click option: You may double click the color palatte of cell types at the right side to 
       display that cell type ONLY; you could also click on one cell type to eliminate that in the
@@ -148,12 +190,19 @@ server <- function(input, output, session) {
       ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
       
     })
-    # output$timeseries3 <- renderPlotly({
-    #   req(length(input_new()$tf)>2)
-    #   TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
-    #   req(TF)
-    #   ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
-    # })
+    output$timeseries3 <- renderPlotly({
+      req(length(input_new()$tf)>2)
+      TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
+      req(TF)
+      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+    })
+    
+    output$timeseries4 <- renderPlotly({
+      req(length(input_new()$tf)>3)
+      TF <- translate_tf(input_new()$tf[4],input_new()$binary_active_TFs)
+      req(TF)
+      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+    })
     
     
     

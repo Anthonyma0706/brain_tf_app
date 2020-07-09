@@ -71,10 +71,12 @@ ui <- fluidPage(
                value = "heatmap and clustering"
       ),
       tabPanel("time series",
+               textOutput("tf_timeseries_desc"),
                textOutput("timeseries_desc"),
                plotlyOutput("timeseries1"),
                plotlyOutput("timeseries2"),
                plotlyOutput("timeseries3"),
+               plotlyOutput("timeseries4"),
                value = "time series"),
       id = "tabs"
     ))
