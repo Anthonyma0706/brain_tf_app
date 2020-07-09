@@ -19,14 +19,6 @@
      },
      {
        
-       "file": "joint_cortex.embedding_and_genes.feather",
-       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.embedding_and_genes.feather",
-       "description": "Table with metadata (cluster assignments, low-dimensional embeddings, QC stats), and expression values for all genes in all cells in the joint cortex space",
-       "contents": "Feather file, with columns corresponding to features or cell metadata info, and rows corresponding to cells"
-       
-     },
-     {
-       
        "file": "joint_cortex.regulon_target_info.Rds",
        "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.regulon_target_info.Rds",
        "description": "Rds file containing data specific for the first tab, where the table is generated from this data file and used for plotting the cytoscape network to see correlations of different tfs with different/same genes related, note that the tf contai",
@@ -63,13 +55,6 @@
        "path": "sjessa/from_hydra/single_cell/scDev_data/data/metadata/metadata_20190716.tsv",
        "description": "The whole metadata with important columns as Cluster (matching all the data),Cell_type (the full name of the cell type),Age (the time point of the sample),Colour (a hex value to use as a colour for that cluster)",
        "contents": "As above."
-       
-     },
-     { 
-       "file": "joint_cortex.metadata.tsv",
-       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.metadata.tsv",
-       "description": "The cortex metadata with respect to each cell(33641 cells), we select(Age = orig.ident, Cell, Cluster = ID_20190730_with_blacklist_and_refined) in this dataset to plot timeseries data(tab3)",
-       "contents": "With columns Cell, nGene, nUMI, percent_mito and several clusters info"
        
      },
      {
