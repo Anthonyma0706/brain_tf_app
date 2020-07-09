@@ -2,4 +2,12 @@
 .Rhistory
 .RData
 .Ruserdata
+
+# Ignore exploratory code
 explore
+
+# Ignore actual data
+data/shared
+data/joint_cortex
+data/joint_pons
+
