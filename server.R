@@ -108,42 +108,42 @@ server <- function(input, output, session) {
       create_activity_data(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext)
     })
     
-    output$cluster1 <- renderPlot({
+    output$cluster1 <- renderPlotly({
       req(length(input_new()$tf)>0)
-      plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
-      
+      p <- plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
+      ggplotly(p)
     })
     
-    output$cluster2 <- renderPlot({
+    output$cluster2 <- renderPlotly({
       req(length(input_new()$tf)>1)
-      plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
-      
+      p <- plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
+      ggplotly(p)
     })
     
     
     
     # --------------------------------------Tab3: timeseries-------------------------------------------
-    output$timeseries1 <- renderPlot({
+    output$timeseries1 <- renderPlotly({
       req(length(input_new()$tf)>0)
       # binary_active_TFs is loaded at beginning by data_prep.R
       TF <- translate_tf(input_new()$tf[1],input_new()$binary_active_TFs)
       req(TF)
-      plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity)
+      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
       
     })
-    output$timeseries2 <- renderPlot({
+    output$timeseries2 <- renderPlotly({
       req(length(input_new()$tf)>1)
       TF <- translate_tf(input_new()$tf[2],input_new()$binary_active_TFs)
       req(TF)
-      plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity)
+      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
       
     })
-    output$timeseries3 <- renderPlot({
-      req(length(input_new()$tf)>2)
-      TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
-      req(TF)
-      plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity)
-    })
+    # output$timeseries3 <- renderPlotly({
+    #   req(length(input_new()$tf)>2)
+    #   TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
+    #   req(TF)
+    #   ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+    # })
     
     
     
