@@ -108,16 +108,16 @@ server <- function(input, output, session) {
       create_activity_data(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext)
     })
     
-    output$cluster1 <- renderPlotly({
+    output$cluster1 <- renderPlot({
       req(length(input_new()$tf)>0)
-      p <- plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
-      ggplotly(p)
+      plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
+      
     })
     
-    output$cluster2 <- renderPlotly({
+    output$cluster2 <- renderPlot({
       req(length(input_new()$tf)>1)
-      p <- plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
-      ggplotly(p)
+      plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
+      
     })
     
     
@@ -131,36 +131,42 @@ server <- function(input, output, session) {
     #     }
     #   }
     # })
-    tf_desc_timeseries <- reactive({
+    # tf_desc_timeseries <- reactive({
+    #   tf_nexist_string <- ""
+    #   for(tf_n in input_new()$tfs_not_exist_timeseries){
+    #     tf_nexist_string <- paste(tf_nexist_string,tf_n,sep = " " )
+    #   }
+    #   text <- glue("We do not have these followning tfs in this tab: {tf_nexist_string}")
+    #   
+    #   tf_nexist <- ""
+    #   for(tf in input_new()$tf){
+    #     if (tf %in% input_new()$tfs_not_exist_timeseries){
+    #       tf_nexist <- paste(tf_nexist,tf,sep = " ")
+    #     }
+    #   }
+    # 
+    #   if(tf_nexist == ""){
+    #     text <- "Good! All of your input tfs exist in our timeseries activity datasets!"
+    #   }
+    #   else{
+    #     tf_nexist_string <- ""
+    #     for(tf_n in input_new()$tfs_not_exist_timeseries){
+    #       tf_nexist_string <- paste(tf_nexist_string,tf_n,sep = " " )
+    #     }
+    #     text <- glue('Those tfs in your input list does not not exist in our
+    #                timeseries datasets: {tf_nexist}.
+    #                We do not have these followning tfs in this tab: {tf_nexist_string}')
+    #   }
+    # })
+    
+    output$tf_timeseries_desc <- renderText({
+      # tf_desc_timeseries()
       tf_nexist_string <- ""
       for(tf_n in input_new()$tfs_not_exist_timeseries){
         tf_nexist_string <- paste(tf_nexist_string,tf_n,sep = " " )
       }
       text <- glue("We do not have these followning tfs in this tab: {tf_nexist_string}")
       
-      # tf_nexist <- ""
-      # for(tf in input_new()$tf){
-      #   if (tf %in% input_new()$tfs_not_exist_timeseries){
-      #     tf_nexist <- paste(tf_nexist,tf,sep = " ")
-      #   }
-      # }
-      # 
-      # if(tf_nexist == ""){
-      #   text <- "Good! All of your input tfs exist in our timeseries activity datasets!"
-      # }
-      # else{
-      #   # tf_nexist_string <- ""
-      #   # for(tf_n in input_new()$tfs_not_exist_timeseries){
-      #   #   tf_nexist_string <- paste(tf_nexist_string,tf_n,sep = " " )
-      #   # }
-      #   text <- glue('Those tfs in your input list does not not exist in our 
-      #              timeseries datasets: {tf_nexist}.
-      #              We do not have these followning tfs in this tab: {tf_nexist_string}')
-      # }
-    })
-    
-    output$tf_timeseries_desc <- renderText({
-      tf_desc_timeseries()
       
     })
     

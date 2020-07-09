@@ -65,8 +65,8 @@ ui <- fluidPage(
       tabPanel("heatmap and clustering",
                plotOutput("heatmap_cell"),
                plotOutput("heatmap_cluster"),
-               plotlyOutput("cluster1"),
-               plotlyOutput("cluster2"),
+               plotOutput("cluster1"),
+               plotOutput("cluster2"),
                
                value = "heatmap and clustering"
       ),
