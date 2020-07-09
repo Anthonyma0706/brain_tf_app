@@ -121,7 +121,9 @@ filter(cell_metadata_cortex, is.na(Cluster)) # has no NA value, better datasets.
 library(rcytoscapejs2) # need to install from github
 
 library(shiny)
-library(tidyverse)
+library(tidyr)
+library(stringr)
+library(tibble)
 library(dplyr)
 library(feather)
 library(ggplot2)
