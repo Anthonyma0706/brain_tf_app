@@ -123,6 +123,16 @@ server <- function(input, output, session) {
     
     
     # --------------------------------------Tab3: timeseries-------------------------------------------
+    output$timeseries_desc <- renderText({
+      text <- "Click option: You may double click the color palatte of cell types at the right side to 
+      display that cell type ONLY; you could also click on one cell type to eliminate that in the
+      plot at left.
+      Mouse over the plot to see the cell types"
+    
+    })
+    
+    
+    
     output$timeseries1 <- renderPlotly({
       req(length(input_new()$tf)>0)
       # binary_active_TFs is loaded at beginning by data_prep.R
