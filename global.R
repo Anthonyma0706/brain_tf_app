@@ -15,7 +15,7 @@ library(glue)
 # Data
 load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
 load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
-load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
+load("data/shared/common_prep.Rda") # metadata and colour_palettes
 
 # Custom functions
 source("functions.R")
