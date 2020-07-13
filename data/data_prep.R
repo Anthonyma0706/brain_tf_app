@@ -1,8 +1,8 @@
 library(tidyr)
-library(dplyr)
-library(readr)
 library(tibble)
 library(stringr)
+library(readr)
+library(dplyr)
 source("../functions.R")
 
 # ———————————————————————————————————color palette————————————————————————————————————————
@@ -88,6 +88,7 @@ TF_and_ext_pon <- identify_tf(TF_active_pon)
 
 timeseries_input_meta_pons <- create_metadata_timeseries(pons_data,"pons") %>%
   filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
+# filter out the extra cell
 
 
 # metadata specific for each cell, corresponding to the activity data
