@@ -201,8 +201,10 @@ create_activity_data <- function(tf, method, region, TF_and_ext){
   #if(tf_exist(tf, TF_and_ext) != TRUE){return("TF does not exist")}
   if(!region %in% c("cortex", "pons")) return("Wrong usage: region should be either cortex/pons")
   
+  method2 <- str_to_lower(method)
+
   # set up the path of the feather file to read
-  path <- glue('data/joint_{region}/joint_{region}.regulon_activity_per_{method}.feather')
+  path <- glue('data/joint_{region}/joint_{region}.regulon_activity_per_{method2}.feather')
   
   # case-insensitive checking
   if(str_detect(method,"(?i)Cell")){cell_col <- read_feather(path, "Cell")}
