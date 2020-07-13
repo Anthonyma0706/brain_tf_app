@@ -34,6 +34,7 @@ server <- function(input, output, session) {
     l$region <- input$region
     l$input_pathway <- input$input_pathway
     l$method <- input$method
+    l$num_cell_plot <- input$num_cell_plot
     # l has following elements with same names for both options above:
     # l contains ...
     
@@ -44,6 +45,17 @@ server <- function(input, output, session) {
   #input_tf <- reactive(input_new()$tf)
   
   # -----------------------------Tab1:table and network------------------------------------------
+    output$general_desc <- renderText({
+      "This app designs for displaying transcription factor and gene data from mice brain (cortex & pons part) in various fancy ways by three main tabs;
+                                             
+       PROBLEM: There are some transcription factors from your input that may not have the corresponding data
+       in the following tabs. (Sometimes you may not see the information of that transcription factor or the plot
+       is not updated, etc. That is unfortunately because of the lack of data in the cell activity data in tab2,
+       or the binary cell activity data in tab3.  
+   "
+      
+    })
+  
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
       datatable(dplyr::filter(input_new()$TF_target_gene_info, TF %in% input_new()$tf))
@@ -66,13 +78,19 @@ server <- function(input, output, session) {
       if(input$show == "all"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
                        input_new()$unique_active_TFs_bare,
-                       input_pathway = input_pathway)$nodes
+                       tf_pathway = input_pathway)$nodes
       }
       else if(input$show == "neglect"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
                        input_new()$unique_active_TFs_bare,
-                       input_pathway = input_pathway)$nodes %>%
+                       tf_pathway = input_pathway)$nodes %>%
           filter(color!="lightgrey")
+      }
+      else if(input$show == "shrink"){
+        create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                       input_new()$unique_active_TFs_bare,
+                       tf_pathway = input_pathway,
+                       shrink_gray = TRUE)$nodes
       }
         
     })
@@ -92,7 +110,7 @@ server <- function(input, output, session) {
     output$heatmap_cell <- renderPlot({
       req("Cell" %in% input_new()$method)
       plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata,
-                   cell_plot_num = input$num_cell_plot)
+                   cell_plot_num = input_new()$num_cell_plot)
     })
     
     output$heatmap_cluster <- renderPlot({
@@ -108,6 +126,11 @@ server <- function(input, output, session) {
       create_activity_data(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext)
     })
     
+    output$cluster_UMAP_desc <- renderText({
+      text <- "Now we can only support two plots of your 
+      first two transcription factor inputs."
+    })
+    
     output$cluster1 <- renderPlot({
       req(length(input_new()$tf)>0)
       plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
@@ -119,6 +142,7 @@ server <- function(input, output, session) {
       plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
       
     })
+  
     
     
     
@@ -175,7 +199,8 @@ server <- function(input, output, session) {
       text <- "Click option: You may double click the color palatte of cell types at the right side to 
       display that cell type ONLY; you could also click on one cell type to eliminate that in the
       plot at left.
-      Mouse over the plot to see the cell types"
+      Mouse over the white vertical line on the plot to see the cell types. 
+      We only support four plots of your first four tfs input for now."
     
     })
     

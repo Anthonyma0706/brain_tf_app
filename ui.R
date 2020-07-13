@@ -17,6 +17,12 @@ ui <- fluidPage(
                   choices = data_cortex$unique_active_TFs_bare,
                   multiple = TRUE,
                   selected = c("Arx","Lef1")),
+      # fileInput("file_tf", "Choose CSV File containing your tf list",
+      #           accept = c(
+      #             "text/csv",
+      #             "text/comma-separated-values,text/plain",
+      #             ".csv")
+      # ),
       
       # 1. table and network graph of related TF and genes
       conditionalPanel(condition = "input.tabs == 'table and network'",
@@ -25,6 +31,7 @@ ui <- fluidPage(
                                     # use the character "joint_cortex" to match the path to import data
                                     choices = c("show all nodes" = "all",
                                                 #"color by user's input tf list" = "pathway",
+                                                "shrink graynodes" = "shrink",
                                                 "neglect graynodes " = "neglect",
                                                 
                                                 "stop showing" = "stop"),
@@ -35,6 +42,12 @@ ui <- fluidPage(
                                    choices = data_cortex$unique_active_TFs_bare,
                                    multiple = TRUE,
                                    selected = c("Arx","Lef1"))
+                       # fileInput("file_gene", "Choose CSV File containing your genes list",
+                       #           accept = c(
+                       #             "text/csv",
+                       #             "text/comma-separated-values,text/plain",
+                       #             ".csv")
+                       # )
                        #actionButton("update_graph", label = "See the network graph")
       ),
       # 2. heatmap and clustering
@@ -53,10 +66,14 @@ ui <- fluidPage(
       # Update everything
       actionButton("update", label = "Update"),
     ),
-    mainPanel(tabsetPanel(
+    mainPanel(
+      tabsetPanel(
+      
       
       tabPanel(title = "table and network",
+               textOutput("general_desc"),
                dataTableOutput("table"),
+               
                textOutput("desc"),
                rcytoscapejsOutput("network", width = "1200px",height = "600px"),
                
@@ -65,6 +82,7 @@ ui <- fluidPage(
       tabPanel("heatmap and clustering",
                plotOutput("heatmap_cell"),
                plotOutput("heatmap_cluster"),
+               textOutput("cluster_UMAP_desc"),
                plotOutput("cluster1"),
                plotOutput("cluster2"),
                
