@@ -1,0 +1,134 @@
+{
+        
+"shared": [
+       {
+        "file": "metadata_20190716.tsv",
+        "path": "sjessa/from_hydra/single_cell/scDev_data/data/metadata/metadata_20190716.tsv",
+        "description": "The whole metadata with important columns as Cluster (matching all the data),Cell_type (the full name of the cell type),Age (the time point of the sample),Colour (a hex value to use as a colour for that cluster)",
+        "contents": "Dataframe with cluster metadata."
+                        
+        },
+        {
+        "file": "common_prep.Rda",
+        "description": "Colour palettes and cluster annotations used for heatmaps, and timeseries",
+        "contents": "R object containing colour palettes, and heatmap annotations",
+        "script": "data_prep.R"
+                        
+        }
+        ],
+
+"joint_cortex": [ 
+      {
+       "file": "cortex_prep.Rda",
+       "description": "Rda file containing datasets generated in data_prep.R, to be loaded at the beginning of app.R to optimize run-time speed and efficiency. ",
+       "contents": "Several R objects: forebrain_data, TF_and_ext, TF_active, metadata, tf_df, cell_metadata_cortex,binary_activity data",
+       "script": "data_prep.R"
+        
+     },
+     {
+       "file": "Forebrain_join.2D.tsv",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/Forebrain_join.2D.tsv",
+       "description": "Cell-level information for forebrain data, including corresponding clusters and UMAP/tSNE/PCA coordinates, used to plot scatterplots",
+       "contents": "Data frame with columns, 'Cell' 'Sample' 'Sample_cluster', followed by columns for embedding coordinates."     
+        
+     },
+     {
+       
+       "file": "joint_cortex.regulon_target_info.Rds",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.regulon_target_info.Rds",
+       "description": "Rds file containing data specific for the first tab, where the table is generated from this data file and used for plotting the cytoscape network to see correlations of different tfs with different/same genes related, note that the tf contai",
+       "contents": "Rds data specific each transcription factor and its corresponding genes and activity data, weight, highconfAnnotation data, motifs."
+       
+     },
+     {
+       
+       "file": "joint_cortex.regulon_activity_per_cluster.feather",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.regulon_activity_per_cluster.feather",
+       "description": "A feather file of tf activity with respect to each cluster that is used for reading by a certain column to optimize speed, used for plotting tab2 (clustering and heatmap) ",
+       "contents": "A dataframe, the first column is cluster, subsequent columns correspond to active TF (TF_active) the values describe the NES(activity score of TF in each cluster),"
+       
+     },
+     {
+       
+       "file": "joint_cortex.regulon_activity_per_cell.feather",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.regulon_activity_per_cell.feather",
+       "description": "A feather file of tf activity with respect to each cell that is used for reading by a certain column to optimize speed, used for plotting tab2(clustering and heatmap) ",
+       "contents": "A dataframe, the first column is cluster, subsequent columns correspond to active TF (TF_active) the values describe the NES(activity score of TF in each cluster),"
+       
+     },
+     {
+       "file": "joint_cortex.active_regulons.Rds",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_cortex/joint_cortex.active_regulons.Rds",
+       "description": "Rds file that is read as tibble containing all tf names with suffix(extended and weight) in the dataset of the second/third tab, note that the tfs are not the same as the first tab data. This vector contains fewer tf than the data in the first tab",
+       "contents": "A character vector(read as tibble later) containing all tf names with suffix(extended and weight) in the dataset of the second/third tab."
+       
+     },
+     {
+       
+       "file": "joint_cortex.binaryRegulonActivity_nonDupl.Rds",
+       "path": "blancha/analyses/njabado/single_cell/mouse_and_human_development/regulon_analysis/scenic/samples/normal_brain/joint_cortex/cluster_indiv/int/4.2_binaryRegulonActivity_nonDupl.Rds",
+       "description": "Binary activity of every tf in each cell, used for plotting cortex timeseries, we also use the rownames to generate a dataframe that saves all the tf names",
+       "contents": "A giant matrix with columns of each cell and rows of tfs, with 1 or 0 denoting the presence of that tf in the cell."
+       
+     }
+     
+   ],
+   
+   "joint_pons": [ 
+   {
+       "file": "pons_prep.Rda",
+       "description": "Rda file containing datasets generated in data_prep.R, to be loaded at the beginning of app.R to optimize run-time speed and efficiency. ",
+       "contents": "Several R objects: pons_data, TF_and_ext, TF_active, metadata, tf_df, cell_metadata_pons,binary_activity data",
+       "script": "data_prep.R"
+        
+     },
+     {
+       "file": "Pons_join.2D.tsv",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_pons/Pons_join.2D.tsv",
+       "description": "Cell-level information for pons data, including corresponding clusters and UMAP/tSNE/PCA coordinates, used to plot scatterplots",
+       "contents": "Data frame with columns, 'Cell' 'Sample' 'Sample_cluster', followed by columns for embedding coordinates."     
+        
+     },
+     {
+       
+       "file": "joint_pons.regulon_target_info.Rds",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_pons/joint_pons.regulon_target_info.Rds",
+       "description": "Rds file containing data specific for the first tab, where the table is generated from this data file and used for plotting the cytoscape network to see correlations of different tfs with different/same genes related, note that the tf contai",
+       "contents": "Rds data specific each transcription factor and its corresponding genes and activity data, weight, highconfAnnotation data, motifs."
+       
+     },
+     {
+       
+       "file": "joint_pons.regulon_activity_per_cluster.feather",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_pons/joint_pons.regulon_activity_per_cluster.feather",
+       "description": "A feather file of tf activity with respect to each cluster that is used for reading by a certain column to optimize speed, used for plotting tab2 (clustering and heatmap) ",
+       "contents": "A dataframe, the first column is cluster, subsequent columns correspond to active TF (TF_active) the values describe the NES(activity score of TF in each cluster),"
+       
+     },
+     {
+       
+       "file": "joint_pons.regulon_activity_per_cell.feather",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_pons/joint_pons.regulon_activity_per_cell.feather",
+       "description": "A feather file of tf activity with respect to each cell that is used for reading by a certain column to optimize speed, used for plotting tab2(clustering and heatmap) ",
+       "contents": "A dataframe, the first column is cluster, subsequent columns correspond to active TF (TF_active) the values describe the NES(activity score of TF in each cluster),"
+       
+     },
+     {
+       "file": "joint_pons.active_regulons.Rds",
+       "path": "sjessa/from_hydra/single_cell/scDev_data/data/joint_pons/joint_pons.active_regulons.Rds",
+       "description": "Rds file that is read as tibble containing all tf names with suffix(extended and weight) in the dataset of the second/third tab, note that the tfs are not the same as the first tab data. This vector contains fewer tf than the data in the first tab",
+       "contents": "A character vector(read as tibble later) containing all tf names with suffix(extended and weight) in the dataset of the second/third tab."
+       
+     },
+     {
+       
+       "file": "joint_pons.binaryRegulonActivity_nonDupl.Rds",
+       "path": "blancha/analyses/njabado/single_cell/mouse_and_human_development/regulon_analysis/scenic/samples/normal_brain/joint_pons/cluster_indiv/int/4.2_binaryRegulonActivity_nonDupl.Rds",
+       "description": "Binary activity of every tf in each cell, used for plotting pons timeseries, we also use the rownames to generate a dataframe that saves all the tf names",
+       "contents": "A giant matrix with columns of each cell and rows of tfs, with 1 or 0 denoting the presence of that tf in the cell."
+       
+     }
+     
+   ]
+
+}
