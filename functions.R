@@ -23,7 +23,7 @@
 #' network <- createCytoscapeJsNetwork(nodeData, edgeData)
 #' rcytoscapejs2(network$nodes, network$edges)
 #' 
-create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway = c(),
+create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
                            shrink_gray = FALSE){ 
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
@@ -47,7 +47,7 @@ create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway = c(),
   nodeData <- nodeData %>%
     mutate(color = case_when(id %in% tf ~ "#9d4097", # orange
                              # orange nodes are tfs that are active in this region
-                             id %in% input_pathway ~ "green",
+                             id %in% pathway_genes ~ "green",
                              id %in% unique_TF ~ "#D6604D", 
                              id %in% mutual_target ~ "#4fafc6",
                              TRUE ~ "lightgrey")) %>%

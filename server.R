@@ -78,18 +78,18 @@ server <- function(input, output, session) {
       if(input$show == "all"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
                        input_new()$unique_active_TFs_bare,
-                       tf_pathway = input_pathway)$nodes
+                       pathway_genes = input_pathway)$nodes
       }
       else if(input$show == "neglect"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
                        input_new()$unique_active_TFs_bare,
-                       tf_pathway = input_pathway)$nodes %>%
+                       pathway_genes = input_pathway)$nodes %>%
           filter(color!="lightgrey")
       }
       else if(input$show == "shrink"){
         create_network(input_new()$tf, input_new()$TF_target_gene_info,
                        input_new()$unique_active_TFs_bare,
-                       tf_pathway = input_pathway,
+                       pathway_genes = input_pathway,
                        shrink_gray = TRUE)$nodes
       }
         
