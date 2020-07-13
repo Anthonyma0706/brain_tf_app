@@ -23,7 +23,8 @@
 #' network <- createCytoscapeJsNetwork(nodeData, edgeData)
 #' rcytoscapejs2(network$nodes, network$edges)
 #' 
-create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway){ 
+create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway = c(),
+                           shrink_gray = FALSE){ 
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
   
@@ -54,6 +55,16 @@ create_network <- function(tf, TF_target_gene, unique_TF, tf_pathway){
                            TRUE ~ "70")) %>%
     mutate(width = case_when(id %in% tf ~ "100",
                             TRUE ~ "70"))
+  
+  if(shrink_gray){
+    nodeData <- nodeData %>%
+      mutate(height = case_when(color %in% "lightgrey" ~ "40",
+                                TRUE ~ "70")) %>%
+      mutate(width = case_when(color %in% "lightgrey" ~ "40",
+                               TRUE ~ "70"))
+    
+  }
+  
   return(list(nodes = nodeData,
               edges = edgeData
   ))
@@ -440,7 +451,7 @@ translate_tf <- function(tf, tf_dataframe){
 }
 
 #' Plot timeseries
-#'
+#' @author Selin Jessa and Anthony Ma, most credit to Selin and Anthony puts codes into the function
 #' @param TF a character vector that contains one or multiple TF names, that may need to be 
 #' transformed ny translate_tf function to change its string form
 #' @param cell_metadata cell_metadata_cortex, loaded in data_prep.R, a dataframe
