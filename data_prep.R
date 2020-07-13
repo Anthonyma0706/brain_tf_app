@@ -1,7 +1,9 @@
 library(tidyr)
-library(dplyr)
+library(tibble)
+library(stringr)
 library(readr)
-source(function.R)
+library(dplyr)
+source("functions.R")
 # ———————————————————————————————————color palette————————————————————————————————————————
 # make color palette
 metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
@@ -77,6 +79,7 @@ TF_and_ext_pon <- identify_tf(TF_active_pon)
 
 timeseries_input_meta_pons <- create_metadata_timeseries(pons_data,"pons") %>%
   filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
+# filter out the extra cell
 
 
 # metadata specific for each cell, corresponding to the activity data
@@ -126,7 +129,7 @@ save(data_cortex, file = "data/joint_cortex/cortex_prep.Rda")
 # -----------------------------pon data-----------------------------
 save(data_pons, file = "data/joint_pons/pons_prep.Rda")
 
-save(metadata,colour_palette_cluster,
+save(colour_palette_cluster,
      hm_anno,colour_palette, file = "data/joint_cortex/common_prep.Rda")
 
 
