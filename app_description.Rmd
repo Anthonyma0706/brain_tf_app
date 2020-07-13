@@ -16,7 +16,7 @@ output:
 More details of functions of each tab will be shown later, with major aspects: user input, output, datasets, libraries required and possible demos of plot/table
 
 ## Second phase after prototype:  
-Main modifications:
+Main modifications:  
 - combine pons and cortex datasets together, they have the same format for all data, choose the data structure to save them and assign in app.R using list  
 - add options of plotting by cell or cluster in the second tab, add color palette designed/commonly recognized in Kleinman lab  
 - write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets  
@@ -36,24 +36,7 @@ Further issue/modification required:
 - consider some customization features (CSS...) since we've had a good prototype that supports basic functionality  
 - get a taste of some real research activitie, maybe using what I developed...  
 
-Issue July 4:
-```
-# cell_metadata_cortex_test is made using forebrain_data, cell_metadata_cortex is made using the new datasets
-# F-p0 INIP, the space between the datasets cause the wrong performance when separating using the '_' delimitor
 
-# metadata specific for each cell, corresponding to the activity data
-forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv") %>%
-  mutate(Sample_cluster = str_replace(Sample_cluster," ","_"))
-
-cell_metadata_cortex_test <- create_metadata_timeseries(forebrain_data, "cortex")
-
-cell_metadata_cortex_prep <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
-cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex_prep)
-
-setdiff(cell_metadata_cortex_test, cell_metadata_cortex)
-filter(cell_metadata_cortex_test, is.na(Cluster)) # has 534 NA value
-filter(cell_metadata_cortex, is.na(Cluster)) # has no NA value, better datasets...
-```
 ## To-do list and questions: 
 
 ### things need to learn: 
@@ -71,14 +54,13 @@ filter(cell_metadata_cortex, is.na(Cluster)) # has no NA value, better datasets.
 
 
 ### unsolved: 
-- use a list to save all datasets? use event reactive ..
-- heatmap plot, a good way to organize code? use function?
 
 - Professor mentioned: static data... (contruct this in a big picture... design ability to switch 2 brain regions from the very beginning, and so on. Get a bunch of user input as a vector? then use that vector to do things accordingly and automatically, instead of hardcoding?) maybe this can apply to the theme(parameters of plot...) of the app, but what about other features?
   1. data  
   2. element for the data  
   3. **style** for that element ??
   4. theme elements??
+
 - May 15: New ideas:
   1. User input can be:
     - empty -> we choose one to display initially
@@ -93,10 +75,7 @@ filter(cell_metadata_cortex, is.na(Cluster)) # has no NA value, better datasets.
     - Intially, display the heatmap for all the TF(each row is a TF), then user can select several TF to subset the graph
       + This input can also be *taken from the input list form step 1*  
   
-  4. UMAP cluster scatterplot: 
-    - change the color of dots using colorRampPalette
-  
-  5. Template (general)
+  4. Template (general)
     - **Format contents in different blocks** (instead of hardcoding each situation,
     **but not writing functions?**)
     - ex. A block of code that interacts with user input (TF vector) and
@@ -112,11 +91,14 @@ filter(cell_metadata_cortex, is.na(Cluster)) # has no NA value, better datasets.
 - Detailed definition of joint cortex? - have 5 time plots of pon and forebrain cluster data then join them again into a whole plot to see the relations and correlations of each cell
 
 ## Library, remember to install rcytoscapejs2 from github first
-```{r, message= FALSE}
-library(rcytoscapejs2) # need to install from github
+```{r , message= FALSE}
+library(rcytoscapejs2) # need to install from github, https://github.com/uc-bd2k/rcytoscapejs2
 
 library(shiny)
-library(tidyverse)
+library(tidyr) # or you may use 
+library(stringr)
+library(readr)
+library(tibble)
 library(dplyr)
 library(feather)
 library(ggplot2)
@@ -128,18 +110,13 @@ load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
 load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
 load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
 source("functions.R")
-
-
-
 ```
 
-```{r setup, include=FALSE}
-
-knitr::opts_chunk$set(echo = TRUE)
-```
 
 ## Datasets
-### 1. Metadata of cluster information
+We now only show the cortex data for demonstration, but pons data and data for other brain regions will have the same format.
+Our central dogma is to code things (plots, helper functions to generate data, etc) in functions with parameters of *region* or *method*(plot ... by cluster/cell) to control the behavior  
+### 1. Metadata of cluster information  
 ```{r,results='asis', message= FALSE}
 metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
 to_display <- select(metadata, -Signature)
@@ -151,8 +128,10 @@ knitr::kable(to_display[1:5,1:10], caption = "Table demo [1:5,1:10]")
   + Cell_type (the full name of the cell type)
   + Age (the time point of the sample)
   + Colour (a hex value to use as a colour for that cluster)
+  
+* Used for making the color palette  
 
-### 2. Forebrain data (Cortex)
+### 2. Forebrain cell metadata (Cortex cell metadata)
 ```{r,results='asis', message= FALSE}
 forebrain_data <- read_tsv("data/joint_cortex/Forebrain_join.2D.tsv")
 knitr::kable(forebrain_data[1:5,], caption = "Table demo")
@@ -215,9 +194,8 @@ datatable(dplyr::filter(data_pons$TF_target_gene_info, TF %in% input_tf))
 
 ```{r}
 TF <- c("Lhx5","Pax7")
-
-nodeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare)$nodes
-edgeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare)$edges
+nodeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare, shrink_gray = TRUE)$nodes
+edgeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare, shrink_gray = TRUE)$edges
 network <- createCytoscapeJsNetwork(nodeData, edgeData)
 rcytoscapejs2(network$nodes, network$edges)
 
@@ -272,28 +250,28 @@ pheatmap::pheatmap(t(act_cluster),
 
 ```
 
-### Option 2: plot by Cell, same colour palette as plotting by cluster
+### Option 2: plot by Cell, use same colour palette as plotting by cluster
 ```{r}
 #,"Atf3","Dlx1","Olig2","Lef1","Hes6",
 act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell","cortex", data_cortex$TF_and_ext) %>%
   mutate(Cluster = gsub("_"," ",data_cortex$cell_metadata[["Sample_cluster"]])) %>%
-  filter(!grepl("BLACKLIST", Cluster)) %>%
-   sample_n(300) %>%
+  filter(!grepl("BLACKLIST", Cluster)) %>% # grepl returns logical vector, filter out BLACKLIST in Cluster col, same as str_detect ...
+   sample_n(300) %>% # since we have way too many cells, we randomly sample hundreds of them
   tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
 
 anno_row_cell <- select(act_cell, Cluster)
 
 act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
-  #sample_n(30)
+# the cell heatmap
 
-pheatmap::pheatmap(t(act_cell),
+pheatmap::pheatmap(t(act_cell), # take the transpose, to make a matrix
                    show_colnames = FALSE,
                    scale = "none",
                    border_color = NA,
                    color = colorRampPalette(c("blue", "white", "red"))(100),
                    main = "Plot by Cells",
                    annotation_col = anno_row_cell,
-                   # change the default color annotation
+                   # change the default color annotation, use the color palette of clusters
                    annotation_colors = hm_anno$side_colors, 
                    annotation_legend = TRUE,
                    cellwidth = 2,
@@ -302,7 +280,7 @@ pheatmap::pheatmap(t(act_cell),
 ``` 
 
 ### Pheatmap recap: how to make annotation_col or row  
-```{r}
+```{r eval=FALSE, include=FALSE}
 library(pheatmap)
 
 # Create test matrix
@@ -390,10 +368,9 @@ plot_UMAP(tf_number = 1,data_pons$cell_metadata, activity_test_pon)
 
 
 ## 3. Time series plot
-- discription: Given user's TF input, plot a time series trajectory of TF activity in pseudotime.
+- discription: Given user's TF input, plot a time series trajectory of TF activity in several time points, not in pseudotime for now.
 - **package**:  
-```{r, message= FALSE}
-library(shiny)
+```
 library(ggplot2)
 ```
 - data: 4.TF_target_gene_info, 5. Activity per cluster, 6. Activity per cell
@@ -405,7 +382,6 @@ However, in our plot, we are displaying TF activity so the y-axis should be TF a
 
 ## First, make color palette for plotting
 ```{r}
-
 colour_palette <- metadata %>% 
   mutate(Cluster = gsub("_", " ", Cluster)) %>% 
   separate(Cluster, into = c("Prefix", "Cluster"), sep = " ") %>% 
@@ -416,8 +392,6 @@ colour_palette <- metadata %>%
   # and the second column is converted to the values
   deframe()
 head(colour_palette)
-
-
 
 ```
 load the cell metadata
@@ -473,27 +447,24 @@ head(cell_metadata)
 
 ```
 
-Make the plot:
+Use the function to make the plot:
+Use the specific cell metadata and activity to the brain region
 
 ```{r, fig.width = 10, fig.height = 8}
 tf_df <- as_tibble(rownames(data_cortex$binary_activity))
 TF <- translate_tf("Lef1",tf_df)
-binary_activity <- readRDS("data/joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
-# cell_metadata_cortex <- read_tsv("data/joint_cortex/joint_cortex.metadata.tsv")
-# cell_metadata_cortex <- create_cell_metadata(cell_metadata_cortex)
-plot_timeseries(TF,data_cortex$timeseries_input_meta, data_cortex$binary_activity)
+# note that TF must be in the form of "Lef1 (22g)", with extension and weights
+plot_timeseries(TF, cell_metadata = data_cortex$timeseries_input_meta, 
+                activity = data_cortex$binary_activity)
 
-activity <- data_pons$binary_activity
+```
 
-# must remove the extra cell
-timeseries_input_meta_pons <- create_metadata_timeseries(data_pons$cell_metadata,"pons") %>%
-  filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
-
-setdiff(cell_metadata_pon,timeseries_input_meta_pons)
-
+```{r}
 TF <- translate_tf("Pax6",data_pons$binary_active_TFs)
 
 plot_timeseries(TF, data_pons$timeseries_input_meta, data_pons$binary_activity)
+```
+
 ```
 Plot by **pseudotime**: cells that captured at same time will vary vastly in their stage in development progress. To avoid this problem, rather than ploting the changes according to the age, we plot as a function of progress with respect to each cell along its own trajectory, which we term "pseudotime".
 
