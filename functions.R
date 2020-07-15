@@ -432,7 +432,8 @@ create_metadata_timeseries <- function(cell_metadata, part){
 #' this function use a clean tf and return a tf with ext and weight type
 #'
 #' @param tf a character vector of a tf without any suffix. EX: "Arx" 
-#' @param tf_dataframe a one column dataframe that contains all the TF names with suffix
+#' @param tf_dataframe a one column dataframe that contains all the TF names with suffix 
+#' , get from the rownames of the cell binary activity data for timeseries tab3
 #' 
 #' @return If the dataframe contains the tf input, it return a best represented tf name
 #'  with ext and weight suffix. If not, it returns FALSE
@@ -442,18 +443,26 @@ create_metadata_timeseries <- function(cell_metadata, part){
 #' translate_tf("Arx",tf_df)  # Arx_extended (21g)
 #' translate_tf("Brahl",tf_df) # FALSE
 #' 
-translate_tf <- function(tf, tf_dataframe){
+translate_tf <- function(tf_list, tf_dataframe){
   tf_info <- identify_tf(tf_dataframe)
-  if(has_regular(tf, tf_info)){
-    tf_regular(tf,tf_info) # a helper to read the corresponding data
+  l <- c()
+  for(TF in tf_list){
+    if(has_regular(TF, tf_info)){
+      l <- c(l, tf_regular(TF,tf_info)) # a helper to read the corresponding data
+    }
+    else if(has_ext(TF, tf_info)){
+      l <- c(l, tf_ext(TF,tf_info))
+    }
+    else{
+      return (FALSE) # means we don't have that data
+    }
+    
   }
-  else if(has_ext(tf, tf_info)){
-    tf_ext(tf,tf_info)
-  }
-  else{
-    return (FALSE) # means we don't have that data
-  }
+  return (l)
 }
+tf_df <- as_tibble(rownames(data_cortex$binary_activity))
+translate_tf("Arx",tf_df)
+translate_tf(c("Lef1","Arx"),tf_df)
 
 #' Plot timeseries
 #' @author Selin Jessa and Anthony Ma, most credit to Selin and Anthony puts codes into the function
