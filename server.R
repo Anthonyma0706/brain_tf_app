@@ -106,12 +106,22 @@ server <- function(input, output, session) {
     
     
     # -----------------------------Tab2-------------------------------------------
-   
-    output$heatmap_cell <- renderPlot({
+    hm_cell_plot <- reactive({
       req("Cell" %in% input_new()$method)
       plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata,
                    cell_plot_num = input_new()$num_cell_plot)
+      
     })
+    output$heatmap_cell <- renderPlot({
+      hm_cell_plot()
+    })
+    
+    output$download_hm_cell <- downloadHandler(filename = "heatmap_cell.png",
+                                               contentType = "image/png",
+                                               content = function(file){
+                                                 ggsave(filename = file, plot = hm_cell_plot(),
+                                                        width = 20, height = 25)
+                                               })
     
     output$heatmap_cluster <- renderPlot({
       req("Cluster" %in% input_new()$method)
@@ -205,35 +215,44 @@ server <- function(input, output, session) {
     })
     
     
+    TF_transformed <- reactive({
+      translate_tf(input_new()$tf,input_new()$binary_active_TFs)
+      })
+    ggplotly_list_plot <- reactive({
+      # binary_active_TFs is loaded at beginning by data_prep.R
+      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
+                          activity = data_cortex$binary_activity, make_plotly = TRUE)
+      # produce a list of ggplotly plots
+      subplot(plot_list, nrows = 2, margin = 0.04, heights = c(0.6, 0.4), shareX = TRUE, shareY = FALSE)
+      
+    })
     
+    ggplot_list_plot <- reactive({
+      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
+                          activity = data_cortex$binary_activity, make_plotly = FALSE, show_legend = FALSE)
+      plot_grid(plotlist = plot_list)
+    })
     output$timeseries1 <- renderPlotly({
       req(length(input_new()$tf)>0)
-      # binary_active_TFs is loaded at beginning by data_prep.R
-      TF <- translate_tf(input_new()$tf[1],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+      ggplotly_list_plot()
+      
+     })
+    output$download_ribbon_1 <- downloadHandler(filename = "timeseries_ribbon.png",
+                                                contentType = "image/png",
+                                                content = function(file){
+                                                  ggsave(filename = file, plot = ggplot_list_plot(),
+                                                         width = 20, height = 15)
+                                                })
+    
+    output$timeseries2 <- renderPlot({
+      ggplot_list_plot()
       
     })
-    output$timeseries2 <- renderPlotly({
-      req(length(input_new()$tf)>1)
-      TF <- translate_tf(input_new()$tf[2],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
-      
-    })
-    output$timeseries3 <- renderPlotly({
-      req(length(input_new()$tf)>2)
-      TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+    output$timeseries_color <- renderImage({
+      list(src = "data/shared/timeseries_color.png",
+           alt = "This is alternate text")
     })
     
-    output$timeseries4 <- renderPlotly({
-      req(length(input_new()$tf)>3)
-      TF <- translate_tf(input_new()$tf[4],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
-    })
     
     
     

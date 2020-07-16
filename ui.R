@@ -3,6 +3,7 @@ ui <- fluidPage(
   
   sidebarLayout(
     sidebarPanel(
+      width = 3,
       # choose which datasets to analyze for the whole app
       radioButtons("region", "Brain region",
                    # use the names in the vector to display
@@ -80,21 +81,36 @@ ui <- fluidPage(
                value = "table and network"
       ),
       tabPanel("heatmap and clustering",
+               
                plotOutput("heatmap_cell"),
+               downloadButton("download_hm_cell", "Heatmap by cell (Png)"),
                plotOutput("heatmap_cluster"),
-               textOutput("cluster_UMAP_desc"),
-               plotOutput("cluster1"),
-               plotOutput("cluster2"),
+               downloadButton("download_hm_cluster", "Heatmap by cluster (Png)"),
+               
+               fluidRow(
+                textOutput("cluster_UMAP_desc"),
+                column(width = 6, plotOutput("cluster1",width = "3in", height = "3in"),
+                       downloadButton("download_UMAP_1", "UMAP scatterplot 1 (Png)")),
+               
+                column(width = 6, plotOutput("cluster2", width = "3in",height = "3in"),
+                       downloadButton("download_UMAP_2", "UMAP scatterplot 2 (Png)")),
+              
+               ),
                
                value = "heatmap and clustering"
       ),
       tabPanel("time series",
                textOutput("tf_timeseries_desc"),
                textOutput("timeseries_desc"),
+               
+               fluidRow(
                plotlyOutput("timeseries1"),
-               plotlyOutput("timeseries2"),
-               plotlyOutput("timeseries3"),
-               plotlyOutput("timeseries4"),
+               downloadButton("download_ribbon_1", "Timeseries ribbon plot (Png)"),
+               plotOutput("timeseries2"),
+               imageOutput("timeseries_color"),
+               #plotOutput("timeseries3"),
+               #plotlyOutput("timeseries4")
+               ),
                value = "time series"),
       id = "tabs"
     ))
