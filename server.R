@@ -1,5 +1,12 @@
 server <- function(input, output, session) {
   # Dynamic UI, change the selectInput tf lists on display
+  observeEvent(input$help,
+               introjs(session, options = list("nextLabel"="Next",
+                                               "prevLabel"="Did you forget something?",
+                                               "skipLabel"="Don't be a quitter"),
+                       events = list("oncomplete"=I('alert("Glad that is over, congrats!")')))
+  )
+  
   observeEvent(input$region,{
     if(input$region == "cortex"){
       updateSelectInput(session, inputId = "TF", choices = data_cortex$unique_active_TFs_bare, 
@@ -63,10 +70,10 @@ server <- function(input, output, session) {
     
     
     output$desc <- renderText({
-      text <- "Orange nodes are active transcription factors(tf genes that express their own tf); " %>%
-        paste("Purple nodes in the center are your input transcription factors; ") %>%
-        paste("Green nodes are your input genes related to input tfs(purple nodes); ") %>%
-        paste("grey nodes are other genes.")
+      text <- "\n  Orange nodes are active transcription factors (tf genes that express their own tf);
+Purple nodes in the center are your input transcription factors;
+Green nodes are your input genes related to input tfs(purple nodes);
+grey nodes are other genes."
     })
     nodeData <- reactive(
       #input$show,

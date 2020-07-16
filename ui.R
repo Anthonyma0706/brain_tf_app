@@ -1,10 +1,18 @@
 ui <- fluidPage(
-  titlePanel("joint cortex and pons data app"),
+  introjsUI(),
+  # Application title
+  introBox(
+    titlePanel("joint cortex and pons data app"),
+    data.step = 1,
+    data.intro = "This is the app for displaying transcription factor and gene data 
+    from mice brain in various fancy ways in three main tabs ..."
+  ),
   
   sidebarLayout(
     sidebarPanel(
       width = 3,
       # choose which datasets to analyze for the whole app
+      actionButton("help", label = "See instructions"),
       radioButtons("region", "Brain region",
                    # use the names in the vector to display
                    # use the character "joint_cortex" to match the path to import data
@@ -26,8 +34,9 @@ ui <- fluidPage(
       # ),
       
       # 1. table and network graph of related TF and genes
+      
       conditionalPanel(condition = "input.tabs == 'table and network'",
-                       radioButtons("show", "Node display option",
+                      radioButtons("show", "Node display option",
                                     # use the names in the vector to display
                                     # use the character "joint_cortex" to match the path to import data
                                     choices = c("show all nodes" = "all",
@@ -50,7 +59,8 @@ ui <- fluidPage(
                        #             ".csv")
                        # )
                        #actionButton("update_graph", label = "See the network graph")
-      ),
+      
+       ),
       # 2. heatmap and clustering
       conditionalPanel(condition = "input.tabs == 'heatmap and clustering'",
                        numericInput(inputId = "num_cell_plot", label = "number of cells to visualize",
@@ -64,22 +74,57 @@ ui <- fluidPage(
                        )),
       # 3. time series plot
       conditionalPanel(condition = "input.tabs == 'time series'"),
+      
+      introBox(
       # Update everything
       actionButton("update", label = "Update"),
+      data.hint = "click me to update everything!",
+      data.step = 2,
+      data.intro = "click it to update everything! Do this after you changed your 
+      tf input and options. Feel free to QUIT the intro first and update it to see the 
+      table and plots",
+      data.position = "right"
+      ),
     ),
     mainPanel(
       tabsetPanel(
       
       
-      tabPanel(title = "table and network",
-               textOutput("general_desc"),
-               dataTableOutput("table"),
-               
-               textOutput("desc"),
-               rcytoscapejsOutput("network", width = "1200px",height = "600px"),
-               
-               value = "table and network"
-      ),
+        tabPanel(
+          title = "table and network",
+          textOutput("general_desc"),
+          introBox(
+          
+          dataTableOutput("table"),
+          data.step = 3,
+          data.intro = "Table and network tab: 
+        A table of tf and its target gene with motifs and other information"
+          ),
+          introBox(
+            data.intro = "Feel free to quit the intro now, click the 'show all nodes' button
+            in the sidebar to see the cytoscape network graph, then we continue",
+            data.step = 4
+          ),
+          
+          
+          textOutput("desc"),
+          tags$style(type="text/css", "#desc {white-space: pre-wrap;}"),
+          introBox(
+          rcytoscapejsOutput("network", width = "1200px",height = "600px"),
+          data.step = 5,
+          data.intro = "a network graph visualization displaying detailed information with node color 
+          and size: 
+          Orange nodes are active transcription factors (tf genes that express their own tf);
+          Purple nodes in the center are your input transcription factors;
+          Green nodes are your input genes related to input tfs(purple nodes)
+          ;  grey nodes are other genes."
+          ),
+          value = "table and network"
+        ),
+        
+        
+      
+      
       tabPanel("heatmap and clustering",
                
                plotOutput("heatmap_cell"),
