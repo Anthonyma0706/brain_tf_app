@@ -10,17 +10,16 @@ source("../functions.R")
 metadata <- read_tsv("shared/metadata_20190716.tsv")
 
 # color palette for heatmap
-colour_palette_cluster <- metadata %>% 
+colour_palette_cluster <- metadata %>%
   # use gsub to change all contents in Cluster (cluster name format)
-  mutate(Cluster = gsub("_", " ", Cluster)) %>% 
+  mutate(Cluster = gsub("_", " ", Cluster)) %>%
   # Get two columns
-  select(Cluster, Colour) %>% 
+  select(Cluster, Colour) %>%
   # Convert to vector of colours, where the first column gives the names
   # and the second column is converted to the values
-  deframe() # VECTOR , not data frame 
+  deframe() # VECTOR , not data frame
 
-# A helper function to prepare a dataframe to annotate the heatmap with colours
-hm_anno <- makePheatmapAnno(colour_palette_cluster, "Cluster")
+
 
 # color palette for timeseries plot, tab3
 colour_palette <- metadata %>% 
@@ -32,6 +31,15 @@ colour_palette <- metadata %>%
   # Convert to vector of colours, where the first column gives the names
   # and the second column is converted to the values
   deframe()
+
+# A helper function to prepare a dataframe to annotate the heatmap with colours
+hm_anno <- makePheatmapAnno(colour_palette_cluster, "Cluster")
+# this is used for generating the anno_row, since we need to have the same rownames as
+# those in t(act_cluster) to color correctly
+
+hm_anno_new <- makePheatmapAnno(colour_palette, "Cluster")
+# this is used in: annotation_colors = hm_anno_new$side_colors, in both heatmaps (by cluster/cells)
+
 
 
 # ———————————————————————————————————Cortex data————————————————————————————————————————
@@ -62,6 +70,7 @@ timeseries_input_meta_cortex <- create_metadata_timeseries(forebrain_data, "cort
 binary_activity <- readRDS("joint_cortex/joint_cortex.binaryRegulonActivity_nonDupl.Rds")
 tf_df <- as_tibble(rownames(binary_activity)) #a dataframe that contains all the tf with 
 # best representation of its identity in the binary_activity dataset
+
 l <- c()
 l_nexist_cortex <- c()
 for (tf in unique_TF){
@@ -155,7 +164,7 @@ save(data_pons, file = "joint_pons/pons_prep.Rda")
 
 # -----------------------------shared data-----------------------------
 save(colour_palette_cluster,
-     hm_anno,colour_palette, file = "shared/common_prep.Rda")
+     hm_anno, hm_anno_new, colour_palette, file = "shared/common_prep.Rda")
 
 
 
