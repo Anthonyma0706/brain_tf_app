@@ -123,20 +123,22 @@ ui <- fluidPage(
         ),
         
         
-      
+        
       
       tabPanel("heatmap and clustering",
+               
                plotOutput("heatmap_cell"),
                downloadButton("download_hm_cell", "Heatmap by cell (Png)"),
                plotOutput("heatmap_cluster"),
                downloadButton("download_hm_cluster", "Heatmap by cluster (Png)"),
+               imageOutput("color_hm_palette", width = "6in", height = "4in"),
                
                fluidRow(
                 textOutput("cluster_UMAP_desc"),
-                column(width = 6, plotOutput("cluster1",width = "3in", height = "3in"),
+                column(width = 6, plotOutput("cluster1",width = "5in", height = "5in"),
                        downloadButton("download_UMAP_1", "UMAP scatterplot 1 (Png)")),
                
-                column(width = 6, plotOutput("cluster2", width = "3in",height = "3in"),
+                column(width = 6, plotOutput("cluster2", width = "5in",height = "5in"),
                        downloadButton("download_UMAP_2", "UMAP scatterplot 2 (Png)")),
               
                ),

@@ -113,6 +113,11 @@ grey nodes are other genes."
     
     
     # -----------------------------Tab2-------------------------------------------
+    output$color_hm_palette <- renderImage({
+      list(src = "www/timeseries_color.png",
+           alt = "This is alternate text")
+    })
+    
     hm_cell_plot <- reactive({
       req("Cell" %in% input_new()$method)
       plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata,
