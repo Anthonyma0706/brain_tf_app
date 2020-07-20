@@ -442,7 +442,7 @@ create_metadata_timeseries <- function(cell_metadata, part){
 #' tf_df <- as_tibble(rownames(activity))
 #' translate_tf("Arx",tf_df)  # Arx_extended (21g)
 #' translate_tf("Brahl",tf_df) # FALSE
-#' 
+#' translate_tf(c("Lef1","Arx"),tf_df) # "Lef1 (22g)"         "Arx_extended (21g)"
 translate_tf <- function(tf_list, tf_dataframe){
   tf_info <- identify_tf(tf_dataframe)
   l <- c()
@@ -454,15 +454,15 @@ translate_tf <- function(tf_list, tf_dataframe){
       l <- c(l, tf_ext(TF,tf_info))
     }
     else{
-      return (FALSE) # means we don't have that data
+      next
+      #return (FALSE) # means we don't have that data
     }
     
   }
   return (l)
 }
-tf_df <- as_tibble(rownames(data_cortex$binary_activity))
-translate_tf("Arx",tf_df)
-translate_tf(c("Lef1","Arx"),tf_df)
+
+
 
 #' Plot timeseries
 #' @author Selin Jessa and Anthony Ma, most credit to Selin and Anthony puts codes into the function
@@ -481,7 +481,8 @@ translate_tf(c("Lef1","Arx"),tf_df)
 #' cell_metadata_cortex <- create_metadata_timeseries(data_cortex$cell_metadata, "cortex")
 #' plot_timeseries(TF,cell_metadata_cortex, binary_activity)
 #' 
-plot_timeseries <- function(TF,cell_metadata, activity){
+plot_timeseries <- function(TF,cell_metadata, activity, make_plotly = FALSE, show_legend = TRUE){
+  
   activity <- activity[TF, ] %>% 
     {data.frame("TF" = .)} %>% 
     tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
@@ -524,9 +525,9 @@ plot_timeseries <- function(TF,cell_metadata, activity){
   
   df$xpos = match(df$stage, unique(timepoints2))
   
-  df %>%
+  plot <- df %>%
     ggplot(aes(x = xpos, y = frac, fill = cluster)) +
-    geom_area(stat = "identity") +
+    geom_area(stat = "identity", show.legend = show_legend) +
     scale_fill_manual(values = colour_palette, drop = FALSE, name = "") +
     scale_x_continuous(breaks = seq_along(unique(df$stage)),
                        labels = c("E12.5", "E15.5", "P0", "P3", "P6"),
@@ -534,6 +535,11 @@ plot_timeseries <- function(TF,cell_metadata, activity){
     labs(x = "age", y = "Proportion", title = TF) +
     guides(fill = guide_legend(ncol = 5)) +
     theme(legend.position = "bottom")
+  
+  if(make_plotly) {
+    return (ggplotly(plot))
+  }
+  else{return(plot)}
 }
 
 
