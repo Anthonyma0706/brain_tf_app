@@ -293,7 +293,7 @@ grey nodes are other genes."
     })
     
     output$timeseries_color <- renderImage({
-      list(src = "data/shared/timeseries_color.png",
+      list(src = "www/timeseries_color.png",
            alt = "This is alternate text")
     })
     
