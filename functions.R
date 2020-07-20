@@ -269,7 +269,7 @@ makePheatmapAnno <- function(palette, column) {
 }
 
 
-#' Title
+#' Plot heatmap by cluster/cells
 #'
 #' @param tf 
 #' @param method 
@@ -432,28 +432,36 @@ create_metadata_timeseries <- function(cell_metadata, part){
 #' this function use a clean tf and return a tf with ext and weight type
 #'
 #' @param tf a character vector of a tf without any suffix. EX: "Arx" 
-#' @param tf_dataframe a one column dataframe that contains all the TF names with suffix
+#' @param tf_dataframe a one column dataframe that contains all the TF names with suffix 
+#' , get from the rownames of the cell binary activity data for timeseries tab3
 #' 
 #' @return If the dataframe contains the tf input, it return a best represented tf name
 #'  with ext and weight suffix. If not, it returns FALSE
 #'
 #' @examples
-#' tf_df <- as_tibble(rownames(activity))
+#' tf_df <- data_cortex$ # as_tibble(rownames(activity))
 #' translate_tf("Arx",tf_df)  # Arx_extended (21g)
-#' translate_tf("Brahl",tf_df) # FALSE
-#' 
-translate_tf <- function(tf, tf_dataframe){
+#' translate_tf("Brahl",tf_df) # NULL
+#' translate_tf(c("Lef1","Arx"),tf_df) # "Lef1 (22g)"         "Arx_extended (21g)"
+translate_tf <- function(tf_list, tf_dataframe){
   tf_info <- identify_tf(tf_dataframe)
-  if(has_regular(tf, tf_info)){
-    tf_regular(tf,tf_info) # a helper to read the corresponding data
+  l <- c()
+  for(TF in tf_list){
+    if(has_regular(TF, tf_info)){
+      l <- c(l, tf_regular(TF,tf_info)) # a helper to read the corresponding data
+    }
+    else if(has_ext(TF, tf_info)){
+      l <- c(l, tf_ext(TF,tf_info))
+    }
+    else{
+      next
+    }
   }
-  else if(has_ext(tf, tf_info)){
-    tf_ext(tf,tf_info)
-  }
-  else{
-    return (FALSE) # means we don't have that data
-  }
+  if(is.null(l)) return (FALSE) # means we don't have that data at all
+  else{return (l)} # return the list
 }
+
+
 
 #' Plot timeseries
 #' @author Selin Jessa and Anthony Ma, most credit to Selin and Anthony puts codes into the function
@@ -472,7 +480,8 @@ translate_tf <- function(tf, tf_dataframe){
 #' cell_metadata_cortex <- create_metadata_timeseries(data_cortex$cell_metadata, "cortex")
 #' plot_timeseries(TF,cell_metadata_cortex, binary_activity)
 #' 
-plot_timeseries <- function(TF,cell_metadata, activity){
+plot_timeseries <- function(TF,cell_metadata, activity, make_plotly = FALSE, show_legend = TRUE){
+  
   activity <- activity[TF, ] %>% 
     {data.frame("TF" = .)} %>% 
     tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
@@ -515,9 +524,9 @@ plot_timeseries <- function(TF,cell_metadata, activity){
   
   df$xpos = match(df$stage, unique(timepoints2))
   
-  df %>%
+  plot <- df %>%
     ggplot(aes(x = xpos, y = frac, fill = cluster)) +
-    geom_area(stat = "identity") +
+    geom_area(stat = "identity", show.legend = show_legend) +
     scale_fill_manual(values = colour_palette, drop = FALSE, name = "") +
     scale_x_continuous(breaks = seq_along(unique(df$stage)),
                        labels = c("E12.5", "E15.5", "P0", "P3", "P6"),
@@ -525,22 +534,11 @@ plot_timeseries <- function(TF,cell_metadata, activity){
     labs(x = "age", y = "Proportion", title = TF) +
     guides(fill = guide_legend(ncol = 5)) +
     theme(legend.position = "bottom")
+  
+  if(make_plotly) {
+    return (ggplotly(plot))
+  }
+  else{return(plot)}
 }
 
-
-# TF <- translate_tf("Pax6",data_pons$tf_df)
-# 
-# plot_timeseries(TF,cell_test, data_pons$binary_activity)
-# 
-# TF <- translate_tf("Arx",data_cortex$tf_df)
-# 
-# plot_timeseries(TF,data_cortex$cell_metadata, data_cortex$binary_activity)
-# 
-# activity <- data_pons$binary_activity
-# activity <- activity[TF, ] %>%
-#   {data.frame("TF" = .)} %>%
-#   tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
-#   arrange(Cell)
-# 
-# cell_test <- filter(data_pons$cell_metadata, Cell != "___po_e12_TACGGGCGTCAAGCGA")
 

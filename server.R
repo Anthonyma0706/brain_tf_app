@@ -1,5 +1,12 @@
 server <- function(input, output, session) {
   # Dynamic UI, change the selectInput tf lists on display
+  observeEvent(input$help,
+               introjs(session, options = list("nextLabel"="Next",
+                                               "prevLabel"="Did you forget something?",
+                                               "skipLabel"="Don't be a quitter"),
+                       events = list("oncomplete"=I('alert("Glad that is over, congrats!")')))
+  )
+  
   observeEvent(input$region,{
     if(input$region == "cortex"){
       updateSelectInput(session, inputId = "TF", choices = data_cortex$unique_active_TFs_bare, 
@@ -63,10 +70,10 @@ server <- function(input, output, session) {
     
     
     output$desc <- renderText({
-      text <- "Orange nodes are active transcription factors(tf genes that express their own tf); " %>%
-        paste("Purple nodes in the center are your input transcription factors; ") %>%
-        paste("Green nodes are your input genes related to input tfs(purple nodes); ") %>%
-        paste("grey nodes are other genes.")
+      text <- "\n  Orange nodes are active transcription factors (tf genes that express their own tf);
+Purple nodes in the center are your input transcription factors;
+Green nodes are your input genes related to input tfs(purple nodes);
+grey nodes are other genes."
     })
     nodeData <- reactive(
       #input$show,
@@ -106,18 +113,41 @@ server <- function(input, output, session) {
     
     
     # -----------------------------Tab2-------------------------------------------
-   
-    output$heatmap_cell <- renderPlot({
+    hm_cell_plot <- reactive({
       req("Cell" %in% input_new()$method)
       plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata,
                    cell_plot_num = input_new()$num_cell_plot)
+      
     })
     
-    output$heatmap_cluster <- renderPlot({
+    hm_cluster_plot <- reactive({
       req("Cluster" %in% input_new()$method)
-      plot_heatmap(input_new()$tf, "Cluster",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata)
-                   
+      plot_heatmap(input_new()$tf, "Cluster",input_new()$region, 
+                   input_new()$TF_and_ext,input_new()$cell_metadata)
+      
     })
+    
+    output$heatmap_cell <- renderPlot({
+      hm_cell_plot()
+    })
+    
+    output$download_hm_cell <- downloadHandler(filename = "heatmap_cell.png",
+                                               contentType = "image/png",
+                                               content = function(file){
+                                                 ggsave(filename = file, plot = hm_cell_plot(),
+                                                        width = 20, height = 25)
+                                               })
+    
+    output$heatmap_cluster <- renderPlot({
+      hm_cluster_plot()        
+    })
+    
+    output$download_hm_cluster <- downloadHandler(filename = "heatmap_cluster.png",
+                                               contentType = "image/png",
+                                               content = function(file){
+                                                 ggsave(filename = file, plot = hm_cluster_plot(),
+                                                        width = 20, height = 25)
+                                               })
   
     # The cluster scatterplot is always plot by cells, so we use an independent reactive
     # value for this plot
@@ -131,17 +161,35 @@ server <- function(input, output, session) {
       first two transcription factor inputs."
     })
     
-    output$cluster1 <- renderPlot({
+    Umap_plot_1 <- reactive({
       req(length(input_new()$tf)>0)
       plot_UMAP(tf_number = 1,input_new()$cell_metadata, activity_data_cluster())
+    })
+    Umap_plot_2 <- reactive({
+      req(length(input_new()$tf)>1)
+      plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
+    })
+    output$cluster1 <- renderPlot({
+      Umap_plot_1()
       
     })
     
     output$cluster2 <- renderPlot({
-      req(length(input_new()$tf)>1)
-      plot_UMAP(tf_number = 2,input_new()$cell_metadata, activity_data_cluster())
-      
+      Umap_plot_2()
     })
+    
+    output$download_UMAP_1 <- downloadHandler(filename = "UMAP1.png",
+                                                  contentType = "image/png",
+                                                  content = function(file){
+                                                    ggsave(filename = file, plot = Umap_plot_1(),
+                                                           width = 20, height = 20)
+                                                  })
+    output$download_UMAP_2 <- downloadHandler(filename = "UMAP2.png",
+                                              contentType = "image/png",
+                                              content = function(file){
+                                                ggsave(filename = file, plot = Umap_plot_2(),
+                                                       width = 20, height = 20)
+                                              })
   
     
     
@@ -204,36 +252,51 @@ server <- function(input, output, session) {
     
     })
     
+    # we must transform the TF format, from raw form (Arx) to (Arx_extended (21g)) to fetch
+    # information
+    TF_transformed <- reactive({
+      translate_tf(input_new()$tf,input_new()$binary_active_TFs)
+      })
     
-    
-    output$timeseries1 <- renderPlotly({
-      req(length(input_new()$tf)>0)
+    ggplotly_list_plot <- reactive({
+      req(TF_transformed())
       # binary_active_TFs is loaded at beginning by data_prep.R
-      TF <- translate_tf(input_new()$tf[1],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
+                          activity = data_cortex$binary_activity, make_plotly = TRUE)
+      # produce a list of ggplotly plots
+      subplot(plot_list, nrows = 2, margin = 0.04, heights = c(0.6, 0.4), shareX = TRUE, shareY = FALSE)
       
-    })
-    output$timeseries2 <- renderPlotly({
-      req(length(input_new()$tf)>1)
-      TF <- translate_tf(input_new()$tf[2],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
-      
-    })
-    output$timeseries3 <- renderPlotly({
-      req(length(input_new()$tf)>2)
-      TF <- translate_tf(input_new()$tf[3],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
     })
     
-    output$timeseries4 <- renderPlotly({
-      req(length(input_new()$tf)>3)
-      TF <- translate_tf(input_new()$tf[4],input_new()$binary_active_TFs)
-      req(TF)
-      ggplotly(plot_timeseries(TF,input_new()$timeseries_input_meta, input_new()$binary_activity))
+    ggplot_list_plot <- reactive({
+      req(TF_transformed())
+      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
+                          activity = data_cortex$binary_activity, make_plotly = FALSE, show_legend = FALSE)
+      plot_grid(plotlist = plot_list)
     })
+    
+    output$timeseries1 <- renderPlotly({ # a plotly list
+      req(length(input_new()$tf)>0)
+      ggplotly_list_plot()
+     })
+    
+    output$download_ribbon_1 <- downloadHandler(filename = "timeseries_ribbon.png",
+                                                contentType = "image/png",
+                                                content = function(file){
+                                                  ggsave(filename = file, plot = ggplot_list_plot(),
+                                                         width = 20, height = 15)
+                                                })
+    
+    output$timeseries2 <- renderPlot({ # a ggplot list
+      ggplot_list_plot()
+      
+    })
+    
+    output$timeseries_color <- renderImage({
+      list(src = "data/shared/timeseries_color.png",
+           alt = "This is alternate text")
+    })
+    
     
     
     

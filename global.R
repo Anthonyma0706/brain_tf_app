@@ -1,4 +1,5 @@
 # Libraries
+library(rintrojs)
 library(shiny)
 library(tidyr)
 library(stringr)
@@ -8,6 +9,7 @@ library(readr)
 library(feather)
 library(plotly)
 library(ggplot2)
+library(cowplot)
 library(pheatmap)
 library(DT)
 library(rcytoscapejs2) # downloaded from https://github.com/uc-bd2k/rcytoscapejs2
