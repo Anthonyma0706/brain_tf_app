@@ -269,7 +269,7 @@ makePheatmapAnno <- function(palette, column) {
 }
 
 
-#' Title
+#' Plot heatmap by cluster/cells
 #'
 #' @param tf 
 #' @param method 
@@ -439,9 +439,9 @@ create_metadata_timeseries <- function(cell_metadata, part){
 #'  with ext and weight suffix. If not, it returns FALSE
 #'
 #' @examples
-#' tf_df <- as_tibble(rownames(activity))
+#' tf_df <- data_cortex$ # as_tibble(rownames(activity))
 #' translate_tf("Arx",tf_df)  # Arx_extended (21g)
-#' translate_tf("Brahl",tf_df) # FALSE
+#' translate_tf("Brahl",tf_df) # NULL
 #' translate_tf(c("Lef1","Arx"),tf_df) # "Lef1 (22g)"         "Arx_extended (21g)"
 translate_tf <- function(tf_list, tf_dataframe){
   tf_info <- identify_tf(tf_dataframe)
@@ -455,11 +455,10 @@ translate_tf <- function(tf_list, tf_dataframe){
     }
     else{
       next
-      #return (FALSE) # means we don't have that data
     }
-    
   }
-  return (l)
+  if(is.null(l)) return (FALSE) # means we don't have that data at all
+  else{return (l)} # return the list
 }
 
 
@@ -542,20 +541,4 @@ plot_timeseries <- function(TF,cell_metadata, activity, make_plotly = FALSE, sho
   else{return(plot)}
 }
 
-
-# TF <- translate_tf("Pax6",data_pons$tf_df)
-# 
-# plot_timeseries(TF,cell_test, data_pons$binary_activity)
-# 
-# TF <- translate_tf("Arx",data_cortex$tf_df)
-# 
-# plot_timeseries(TF,data_cortex$cell_metadata, data_cortex$binary_activity)
-# 
-# activity <- data_pons$binary_activity
-# activity <- activity[TF, ] %>%
-#   {data.frame("TF" = .)} %>%
-#   tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
-#   arrange(Cell)
-# 
-# cell_test <- filter(data_pons$cell_metadata, Cell != "___po_e12_TACGGGCGTCAAGCGA")
 
