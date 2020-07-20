@@ -299,12 +299,17 @@ plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num
       filter(!grepl("BLACKLIST", Cluster)) %>% # filter out bad samples
       sample_n(cell_plot_num) %>%  # randomly sample it
       tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
+    
     anno_row_cell <- select(act_cell, Cluster)
-    #anno_row_cell$Cluster <- as.factor(anno_row_cell$Cluster)
+    # change the anno_row, since we change the color palettes
+    new_anno_row_cell <- anno_row_cell %>%
+      mutate(Cluster = gsub(pattern = ".* ", replacement = "", Cluster))
+    rownames(new_anno_row_cell) <- rownames(anno_row_cell) # re-assign the rownames
+    
     act <- select(act_cell, -Cluster) # must remove Cluster data before plotting
     
     # customized for plotting by cell
-    anno_col <- anno_row_cell # assign to the same variable for plotting
+    anno_col <- new_anno_row_cell # assign to the same variable for plotting
     cell_width_plot <- 2
     show_colname_plot <- FALSE
   }
@@ -313,8 +318,13 @@ plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num
       #sample_n(cluster_plot_num) %>% # randomly sample it
       tibble::column_to_rownames(var = "Cluster") # make that column name as row name ...
     
+    # change the anno_row, since we change the color palettes
+    new_anno_row <- hm_anno$anno_row %>%
+      mutate(Cluster = gsub(pattern = ".* ", replacement = "", Cluster))
+    rownames(new_anno_row) <- rownames(hm_anno$anno_row) # re-assign the rownames
+    # note that the rownames correspond to the col names of the matrix t(act_cluster)
     # customized for plotting by cluster
-    anno_col <- hm_anno$anno_row # this is loaded by data_prep.R
+    anno_col <- new_anno_row # this is loaded by data_prep.R
     cell_width_plot <- 10
     show_colname_plot <- TRUE
   }
@@ -326,8 +336,8 @@ plot_heatmap <- function(tf,method, region, TF_and_ext,brain_data, cell_plot_num
                      main = glue('Plot by {method}s'),
                      annotation_col = anno_col,
                      # change the default color annotation
-                     annotation_colors = hm_anno$side_colors, # loaded by data_prep.R
-                     annotation_legend = TRUE,
+                     annotation_colors = hm_anno_new$side_colors, # loaded by data_prep.R
+                     annotation_legend = FALSE,
                      cellwidth = cell_width_plot,
                      cellheight = 10)
 } 
