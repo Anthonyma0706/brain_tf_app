@@ -4,8 +4,8 @@ ui <- fluidPage(
   introBox(
     titlePanel("joint cortex and pons data app"),
     data.step = 1,
-    data.intro = "This is the app for displaying transcription factor and gene data 
-    from mice brain in various fancy ways in three main tabs ..."
+    data.intro = "This app displays transcription factor activity inference data from 
+    a developmental timecourse of the mouse forebrain in pons in three main tabs including:"
   ),
   
   sidebarLayout(
@@ -42,7 +42,7 @@ ui <- fluidPage(
                                     choices = c("show all nodes" = "all",
                                                 #"color by user's input tf list" = "pathway",
                                                 "shrink graynodes" = "shrink",
-                                                "neglect graynodes " = "neglect",
+                                                "neglect graynodes" = "neglect",
                                                 
                                                 "stop showing" = "stop"),
                                     selected = "stop"),#,
@@ -126,7 +126,6 @@ ui <- fluidPage(
       
       
       tabPanel("heatmap and clustering",
-               
                plotOutput("heatmap_cell"),
                downloadButton("download_hm_cell", "Heatmap by cell (Png)"),
                plotOutput("heatmap_cluster"),
