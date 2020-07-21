@@ -8,12 +8,36 @@ output:
     toc_depth: 2
 ---
 ## Goal  
-* This app designs for displaying transcription factor and gene data from mice in various fancy ways by three main tabs including:  
-  - Given user's TF input, display a table of genes associated with that TF and a network graph visualization displaying detailed information with node color and edge thickness
-  - A heatmap which visualizes color gradient using NES (the activity score) per cluster/cell (PS: might be interactive using complex heatmap)
-  - A scatterplot that, using UMAP cluster algorithm, reduces dimensions in huge cluster genetic data, display closely related clusters. 
+* This app displays transcription factor activity inference data from a developmental timecourse of the mouse forebrain in pons in three main tabs including:
+
+  - Tab 1 (tf and gene datatable and network graph): Given a list of TFs, display a table of those TFs with their inferred target genes, Normalized Enrichment Score (NES) representing the activity level, motifs, etc. Secondly, based the same gene regulatory network, a network graph visualization displaying the TF and targets, where overlaps in targets of different TFs can be visualized easily. Color and size of nodes designate different types of genes. Genes (nodes) which are part of a user-defined list can also be coloured to highlight members of a pathway.
+
+  - Tab 2 (heatmap and UMAP clustering plot): For this tab, we visualize the activity levels of transcription at the cell and cluster level.
+
+  Firstly, two heatmaps visualize the activity per cluster/cell, with cells annotated by cluster. Secondly, we show the TF activity in the cells in a two-dimensional embedding (UMAP), to highlight regions (clusters/cell types) with high activity.
+
+  - Tab 3 (timeseries ribbon plot), we use the binarized TF activity to plot the proportion of cells where the TF is active at each timepoint during embryonic and postnatal development (E12.5, E15.5, P0, P3, P6). Moreover, we use plotly to display an interactive data visualization – hover over the plot to display the cluster label, and click on the cell type legend to restrict the visualization to selected clusters of interest.
+
   
 More details of functions of each tab will be shown later, with major aspects: user input, output, datasets, libraries required and possible demos of plot/table
+
+## recent updates:
+- control the size of plots (tab2)
+- make a plot list first then plot using plot_grid or plotly::sub_plot
+- change the color palette of tab2 heatmap, remove all the prefixes(F-E12...)
+- add analyze by pathway features in tab1 cytoscape network
+- add download buttons of plots
+
+
+## Final instructions to be added:  
+- data structures: how I save all the data of different brain regions...
+- rintrojs: 
+  - sidebar first,   
+  - introduce the data, then how to plot them...(parameters and functionalities of the plots)
+  - explain plotly plots, the interactivity and fancy features
+  
+- add more instructions on cytoscape network feature, how to control colors...
+
 
 ## Second phase after prototype:  
 Main modifications:  
@@ -22,8 +46,8 @@ Main modifications:
 - write new functions and add new parameters in order to reconcile the demand of easier coding, better readability and switch between two brain region datasets  
 
 Further issue/modification required:   
-- install packages on server ...  
-- add controls for the size of heatmaps... (width, height ...) -> maybe see complex heatmap if it has better control options interactively  
+- change the legend (color palette) of tab2 heatmaps
+- (width, height ...) -> maybe see complex heatmap if it has better control options interactively  
 - heatmap, show a picture of the cluster color palette  
 - tab1: display an additional table for the graph network  
 - Modify tab3 function to suit the pons data  
@@ -55,7 +79,7 @@ Further issue/modification required:
 
 ### unsolved: 
 
-- Professor mentioned: static data... (contruct this in a big picture... design ability to switch 2 brain regions from the very beginning, and so on. Get a bunch of user input as a vector? then use that vector to do things accordingly and automatically, instead of hardcoding?) maybe this can apply to the theme(parameters of plot...) of the app, but what about other features?
+- Professor mentioned: static data... (construct this in a big picture... design ability to switch 2 brain regions from the very beginning, and so on. Get a bunch of user input as a vector? then use that vector to do things accordingly and automatically, instead of hardcoding?) maybe this can apply to the theme(parameters of plot...) of the app, but what about other features?
   1. data  
   2. element for the data  
   3. **style** for that element ??
@@ -102,13 +126,14 @@ library(tibble)
 library(dplyr)
 library(feather)
 library(ggplot2)
+library(plotly)
 library(pheatmap)
 library(DT)
 library(glue)
 
 load("data/joint_cortex/cortex_prep.Rda") # a list, data_cortex
 load("data/joint_pons/pons_prep.Rda")     # a list, data_pons
-load("data/joint_cortex/common_prep.Rda") # metadata and colour_palettes
+load("data/shared/common_prep.Rda") # metadata and colour_palettes
 source("functions.R")
 ```
 
@@ -118,7 +143,7 @@ We now only show the cortex data for demonstration, but pons data and data for o
 Our central dogma is to code things (plots, helper functions to generate data, etc) in functions with parameters of *region* or *method*(plot ... by cluster/cell) to control the behavior  
 ### 1. Metadata of cluster information  
 ```{r,results='asis', message= FALSE}
-metadata <- read_tsv("data/joint_cortex/metadata_20190716.tsv")
+metadata <- read_tsv("data/shared/metadata_20190716.tsv")
 to_display <- select(metadata, -Signature)
 knitr::kable(to_display[1:5,1:10], caption = "Table demo [1:5,1:10]")
 ```  
@@ -192,6 +217,67 @@ datatable(dplyr::filter(data_pons$TF_target_gene_info, TF %in% input_tf))
 
 ```
 
+``` {r network_demo}
+# parameters
+tf <- c("Arx", "Lef1")
+TF_target_gene <- data_cortex$TF_target_gene_info
+unique_TF <- data_cortex$unique_active_TFs_bare
+pathway_genes <- c()
+shrink_gray <- FALSE
+
+# fetch all the data(rows) in the TF target & genes data from your input list 
+TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
+gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
+
+source <- TF_interest
+target <- gene_target
+
+id <- c(TF_interest, gene_target)
+name <- id
+nodeData <- data.frame(id, name, stringsAsFactors = FALSE)
+edgeData <- data.frame(source, target, stringsAsFactors = FALSE)
+
+#unique_TF <- unique(TF_target_gene[["TF"]])
+
+mutual_target <- edgeData %>% 
+  # a character vector that indicates the nodes that are target of multiple selected TFs
+  count(target) %>%
+  filter(n > 1 & !target %in% tf ) %>%
+  .[[1]]
+
+nodeData <- nodeData %>% 
+  # you can customize the color using the case_when structure easily,
+  # check the tfs in id column that exist in your vector, then you can control its size,
+  # shape and color easily  
+  mutate(color = case_when(id %in% tf ~ "#9d4097", # orange
+                           # orange nodes are tfs that are active in this region
+                           id %in% pathway_genes ~ "green",
+                           id %in% unique_TF ~ "#D6604D", 
+                           id %in% mutual_target ~ "#4fafc6",
+                           TRUE ~ "lightgrey")) %>%
+  # change the size (height and weight)
+  mutate(height = case_when(id %in% tf ~ "100",
+                         TRUE ~ "70")) %>%
+  mutate(width = case_when(id %in% tf ~ "100",
+                          TRUE ~ "70"))
+
+if(shrink_gray){
+  nodeData <- nodeData %>%
+    mutate(height = case_when(color %in% "lightgrey" ~ "40",
+                              TRUE ~ "70")) %>%
+    mutate(width = case_when(color %in% "lightgrey" ~ "40",
+                             TRUE ~ "70"))
+  
+}
+
+l <- list(nodes = nodeData,
+            edges = edgeData)
+
+network <- createCytoscapeJsNetwork(nodeData, edgeData)
+rcytoscapejs2(network$nodes, network$edges)
+
+```
+
 ```{r}
 TF <- c("Lhx5","Pax7")
 nodeData <- create_network(TF, data_pons$TF_target_gene_info, data_pons$unique_active_TFs_bare, shrink_gray = TRUE)$nodes
@@ -219,7 +305,8 @@ library(pheatmap)
   
 ### Option 1: plot by Cluster, Note that later in the app we will use function plot_heatmap() for easier control between regions and methods(by cell or cluster)
 ```{r}
-colour_palette <- metadata %>% 
+metadata <- read_tsv("data/shared/metadata_20190716.tsv")
+colour_palette_cluster <- metadata %>% 
   # use gsub to change all contents in Cluster (cluster name format)
   mutate(Cluster = gsub("_", " ", Cluster)) %>% 
   # Get two columns
@@ -229,7 +316,25 @@ colour_palette <- metadata %>%
   deframe() # VECTOR , not data frame 
 
 # A helper function to prepare a dataframe to annotate the heatmap with colours
-hm_anno <- makePheatmapAnno(colour_palette, "Cluster")
+
+
+hm_anno <- makePheatmapAnno(colour_palette_cluster, "Cluster")
+
+hm_anno_new <- makePheatmapAnno(colour_palette, "Cluster")
+
+
+# There are many samples of cluster, collected from different timepoints, while they're the
+# same, but having different timepoints prefix, for example: F-e12 VRGC and F-p0 VRGC,
+# we remove all the prefix, using the same color palette
+new_anno_row <- hm_anno$anno_row %>%
+  mutate(Cluster = gsub(pattern = ".* ", replacement = "", Cluster))
+rownames(new_anno_row) <- rownames(hm_anno$anno_row) # re-assign the rownames
+# note that the rownames correspond to the col names of the matrix t(act_cluster)
+
+unique(new_anno_row$Cluster) # 100
+
+setequal(unique(new_anno_row$Cluster), names(colour_palette)) # TRUE
+
 
 act_cluster <- create_activity_data(c("E2f1","Atf3"), "Cluster", "cortex",data_cortex$TF_and_ext) %>%
   sample_n(30) %>%
@@ -241,13 +346,66 @@ pheatmap::pheatmap(t(act_cluster),
                    border_color = NA,
                    color = colorRampPalette(c("blue", "white", "red"))(100),
                    main = "Plot by Clusters",
-                   annotation_col = hm_anno$anno_row,
+                   annotation_col = new_anno_row,
                    # change the default color annotation
-                   annotation_colors = hm_anno$side_colors, 
-                   annotation_legend = ,
+                   annotation_colors = hm_anno_new$side_colors, 
+                   annotation_legend = TRUE,
                    cellwidth = 10,
                    cellheight = 10)
 
+
+
+
+# hm_anno$side_colors
+# names(colour_palette)
+# hm_anno$side_colors
+# setdiff(list(cluster = colour_palette),hm_anno$side_colors)
+# 
+# new_palette <- list(cluster = colour_palette)
+# 
+# length(new_palette$cluster)
+
+
+# 
+# length(hm_anno$side_colors[[1]])
+# hm_anno_new$anno_row
+# length(hm_anno_new$side_colors[[1]])
+# we have 100 fewer colors, since we remove
+```
+```{r}
+pheatmap::pheatmap(t(act_cluster),
+                   #show_colnames = FALSE,
+                   scale = "none",
+                   border_color = NA,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   main = "Plot by Clusters",
+                   annotation_col = hm_anno$anno_row,
+                   # change the default color annotation
+                   annotation_colors = hm_anno$side_colors, 
+                   annotation_legend = TRUE,
+                   cellwidth = 10,
+                   cellheight = 10)
+
+```
+
+```{r}
+library(heatmaply)
+col <- colorRampPalette(rev(RColorBrewer::brewer.pal(n = 7, name = "RdYlBu")))(100)
+a <- hm_anno$side_colors
+
+heatmaply(t(act_cluster), colors = col , grid_color = "grey60")
+      
+
+x  <- as.matrix(datasets::mtcars)
+rc <- colorspace::rainbow_hcl(nrow(x))
+length(rc)
+length(x)
+heatmaply(
+  x[, -c(8, 9)],
+  seriate = "mean",
+  col_side_colors = c(rep(0, 5), rep(1, 4)),
+  #row_side_colors = x[, 8:9]
+)
 ```
 
 ### Option 2: plot by Cell, use same colour palette as plotting by cluster
@@ -255,6 +413,42 @@ pheatmap::pheatmap(t(act_cluster),
 #,"Atf3","Dlx1","Olig2","Lef1","Hes6",
 act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell","cortex", data_cortex$TF_and_ext) %>%
   mutate(Cluster = gsub("_"," ",data_cortex$cell_metadata[["Sample_cluster"]])) %>%
+  filter(!grepl("BLACKLIST", Cluster)) %>% # grepl returns logical vector, filter out BLACKLIST in Cluster col, same as str_detect ...
+   sample_n(300) %>% # since we have way too many cells, we randomly sample hundreds of them
+  tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
+
+anno_row_cell <- select(act_cell, Cluster)
+
+new_anno_row_cell <- anno_row_cell %>%
+  mutate(Cluster = gsub(pattern = ".* ", replacement = "", Cluster))
+rownames(new_anno_row_cell) <- rownames(anno_row_cell) # re-assign the rownames
+
+act_cell <- select(act_cell, -Cluster)# %>% # must remove Cluster data before plotting
+# the cell heatmap
+
+pheatmap::pheatmap(t(act_cell), # take the transpose, to make a matrix
+                   show_colnames = FALSE,
+                   scale = "none",
+                   border_color = NA,
+                   color = colorRampPalette(c("blue", "white", "red"))(100),
+                   main = "Plot by Cells",
+                   annotation_col = new_anno_row_cell,
+                   # change the default color annotation, use the color palette of clusters
+                   annotation_colors = hm_anno_new$side_colors, 
+                   annotation_legend = TRUE,
+                   cellwidth = 2,
+                   cellheight = 10)
+
+
+
+
+``` 
+
+```{r}
+#,"Atf3","Dlx1","Olig2","Lef1","Hes6",
+act_cell <- create_activity_data(c("E2f1","Sox9"), "Cell","cortex", data_cortex$TF_and_ext) %>%
+  mutate(Cluster = gsub("_"," ",data_cortex$cell_metadata[["Sample_cluster"]])) %>%
+  #mutate(Cluster = names(colour_palette)) %>%
   filter(!grepl("BLACKLIST", Cluster)) %>% # grepl returns logical vector, filter out BLACKLIST in Cluster col, same as str_detect ...
    sample_n(300) %>% # since we have way too many cells, we randomly sample hundreds of them
   tibble::column_to_rownames(var = "Cell") # make that column name as row name ...
@@ -277,7 +471,20 @@ pheatmap::pheatmap(t(act_cell), # take the transpose, to make a matrix
                    cellwidth = 2,
                    cellheight = 10)
 
-``` 
+length(data_cortex$cell_metadata[["Sample_cluster"]])
+cluster_before <- data_cortex$cell_metadata[["Sample_cluster"]]
+old_color <- as_tibble(unique(str_replace(cluster_before,"F-p._|F-e.._", ""))) %>%
+  filter(!grepl("BLACKLIST", value)) %>%
+  deframe()
+
+setdiff(names(colour_palette), old_color)
+class(names(colour_palette))
+class(old_color)
+
+old_color
+unique(names(colour_palette))
+setdiff()
+```
 
 ### Pheatmap recap: how to make annotation_col or row  
 ```{r eval=FALSE, include=FALSE}
@@ -452,12 +659,59 @@ Use the specific cell metadata and activity to the brain region
 
 ```{r, fig.width = 10, fig.height = 8}
 tf_df <- as_tibble(rownames(data_cortex$binary_activity))
-TF <- translate_tf("Lef1",tf_df)
+#TF <- head(data_cortex$unique_active_TFs_bare)
+
+TF <- translate_tf(c("Lef1",head(data_cortex$unique_active_TFs_bare)),tf_df)
+
+p1 <- ggplotly(plot_timeseries(TF[1], cell_metadata = data_cortex$timeseries_input_meta, 
+                 activity = data_cortex$binary_activity))
+p2 <- ggplotly(plot_timeseries(TF[2], cell_metadata = data_cortex$timeseries_input_meta, 
+                 activity = data_cortex$binary_activity, show_lengend = TRUE))
+p3 <- ggplotly(plot_timeseries(TF[3], cell_metadata = data_cortex$timeseries_input_meta, 
+                 activity = data_cortex$binary_activity, show_lengend = TRUE))
+
+plot_list <- lapply(TF, plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
+                activity = data_cortex$binary_activity, make_plotly = TRUE, show_legend = FALSE)
+
+subplot(plot_list, nrows = 2, margin = 0.04, heights = c(0.6, 0.4), shareX = TRUE, shareY = FALSE)
+
+subplot(p2,p3, nrows = 2, margin = 0.04, heights = c(0.6, 0.4), titleX=F, titleY = F)
+
+plot_timeseries(TF[1], cell_metadata = data_cortex$timeseries_input_meta, 
+                 activity = data_cortex$binary_activity, show_lengend = FALSE, make_plotly = FALSE)
+
+
 # note that TF must be in the form of "Lef1 (22g)", with extension and weights
-plot_timeseries(TF, cell_metadata = data_cortex$timeseries_input_meta, 
+
+# for(tf in TF){
+#   plot <- plot_timeseries(tf, cell_metadata = data_cortex$timeseries_input_meta, 
+#                 activity = data_cortex$binary_activity)
+#   print(plot)
+# }
+
+plot_list <- lapply(TF, plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
                 activity = data_cortex$binary_activity)
 
+
+plot_grid(plotlist = plot_list)
+
+df <- data.frame(
+  x = 1:10, y1 = 1:10, y2 = (1:10)^2, y3 = (1:10)^3, y4 = (1:10)^4
+)
+
+p1 <- ggplotly(ggplot(df, aes(x, y1)) + geom_point())
+p2 <- ggplotly(ggplot(df, aes(x, y2)) + geom_point())
+p3 <- ggplot(df, aes(x, y3)) + geom_point()
+p4 <- ggplot(df, aes(x, y4)) + geom_point()
+p5 <- ggplot(mpg, aes(as.factor(year), hwy)) +
+        geom_boxplot() +
+        facet_wrap(~class, scales = "free_y")
+# simple grid
+plot_grid(p1, p2)
+
+
 ```
+
 
 ```{r}
 TF <- translate_tf("Pax6",data_pons$binary_active_TFs)
@@ -465,7 +719,73 @@ TF <- translate_tf("Pax6",data_pons$binary_active_TFs)
 plot_timeseries(TF, data_pons$timeseries_input_meta, data_pons$binary_activity)
 ```
 
+
+
+```{r timeseries_test}
+# paramters
+TF <- TF <- translate_tf("Lef1",data_cortex$binary_active_TFs)
+cell_metadata <- data_cortex$timeseries_input_meta
+activity <- data_cortex$binary_activity
+
+
+
+activity <- activity[TF, ] %>% 
+    {data.frame("TF" = .)} %>% 
+    tibble::rownames_to_column(var = "Cell") %>% # the original activity vector has names
+    arrange(Cell)
+  
+  if(!all(cell_metadata$Cell == activity$Cell)) return (-1)
+  # Add the TF activity to the new dataframe
+  ribbon_df <- cell_metadata
+  ribbon_df$TF <- activity$TF
+  
+  ribbon_df <- ribbon_df %>% 
+    filter(!grepl("BLACKLIST", Cluster))
+  ribbon_df_celltype_frac <- ribbon_df %>% 
+    group_by(Age) %>% 
+    # Total cells at each age
+    mutate(total = n()) %>% 
+    group_by(Age, Cluster) %>%
+    # Proportion of TF+ cells per cluster, per age
+    mutate(frac = sum(TF > 0) / total) %>% 
+    distinct(Age, Cluster, frac) %>% 
+    ungroup()
+  
+  ribbon_df_cum_frac <- ribbon_df %>% 
+    group_by(Age) %>% 
+    summarize(cumfrac = sum(TF > 0) / n()) %>% 
+    ungroup()
+  
+  timepoints2 <- ribbon_df$Age
+  clusters <- ribbon_df$Cluster
+  
+  df = data.frame(cluster = rep(unique(clusters), length(unique(timepoints2))),
+                  stage = do.call(c, lapply(as.character(unique(timepoints2)), rep, times = length(unique(clusters)))))
+  
+  df$ranking = match(df$cluster, names(colours))
+  df = df[order(df$stage, df$ranking),]
+  
+  df <- left_join(df, select(ribbon_df_celltype_frac, cluster = Cluster, stage = Age, frac)) %>% 
+    mutate(frac = replace_na(frac, 0)) %>% 
+    left_join(select(ribbon_df_cum_frac, stage = Age, cumfrac))
+  
+  df$xpos = match(df$stage, unique(timepoints2))
+  
+  df %>%
+    ggplot(aes(x = xpos, y = frac, fill = cluster)) +
+    geom_area(stat = "identity", show.legend = TRUE) +
+    scale_fill_manual(values = colour_palette, drop = FALSE, name = "") +
+    scale_x_continuous(breaks = seq_along(unique(df$stage)),
+                       labels = c("E12.5", "E15.5", "P0", "P3", "P6"),
+                       limits = c(1, length(unique(df$stage)))) +
+    labs(x = "age", y = "Proportion", title = TF) +
+    guides(fill = guide_legend(ncol = 5)) +
+    theme(legend.position = "bottom")
+
+
 ```
+
+
 Plot by **pseudotime**: cells that captured at same time will vary vastly in their stage in development progress. To avoid this problem, rather than ploting the changes according to the age, we plot as a function of progress with respect to each cell along its own trajectory, which we term "pseudotime".
 
 
