@@ -113,6 +113,15 @@ grey nodes are other genes."
     
     
     # -----------------------------Tab2-------------------------------------------
+    output$color_hm_palette <- renderImage({
+      
+      expr = list(src = "www/timeseries_color.png",
+           alt = "This is alternate text")
+      
+      
+    },
+    deleteFile = FALSE)
+    
     hm_cell_plot <- reactive({
       req("Cell" %in% input_new()$method)
       plot_heatmap(input_new()$tf, "Cell",input_new()$region, input_new()$TF_and_ext,input_new()$cell_metadata,
@@ -258,26 +267,27 @@ grey nodes are other genes."
       translate_tf(input_new()$tf,input_new()$binary_active_TFs)
       })
     
-    ggplotly_list_plot <- reactive({
-      req(TF_transformed())
-      # binary_active_TFs is loaded at beginning by data_prep.R
-      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
-                          activity = data_cortex$binary_activity, make_plotly = TRUE)
-      # produce a list of ggplotly plots
-      subplot(plot_list, nrows = 2, margin = 0.04, heights = c(0.6, 0.4), shareX = TRUE, shareY = FALSE)
-      
-    })
+    # ggplotly_list_plot <- reactive({
+    #   req(TF_transformed())
+    #   # binary_active_TFs is loaded at beginning by data_prep.R
+    #   plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
+    #                       activity = data_cortex$binary_activity, make_plotly = TRUE)
+    #   # produce a list of ggplotly plots
+    #   subplot(plot_list, nrows = 2, margin = 0.04, heights = c(0.6, 0.4), shareX = TRUE, shareY = FALSE)
+    #   
+    # })
+    
     
     ggplot_list_plot <- reactive({
       req(TF_transformed())
-      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = data_cortex$timeseries_input_meta, 
-                          activity = data_cortex$binary_activity, make_plotly = FALSE, show_legend = FALSE)
+      plot_list <- lapply(TF_transformed(), plot_timeseries, cell_metadata = input_new()$timeseries_input_meta, 
+                          activity = input_new()$binary_activity, make_plotly = FALSE, show_legend = FALSE)
       plot_grid(plotlist = plot_list)
     })
     
     output$timeseries1 <- renderPlotly({ # a plotly list
       req(length(input_new()$tf)>0)
-      ggplotly_list_plot()
+      plot_timeseries(TF_transformed()[1][1], input_new()$timeseries_input_meta, input_new()$binary_activity,make_plotly = TRUE)
      })
     
     output$download_ribbon_1 <- downloadHandler(filename = "timeseries_ribbon.png",
@@ -293,9 +303,12 @@ grey nodes are other genes."
     })
     
     output$timeseries_color <- renderImage({
+      
       list(src = "www/timeseries_color.png",
            alt = "This is alternate text")
-    })
+      
+    },
+    deleteFile = FALSE)
     
     
     
