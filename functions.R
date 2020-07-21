@@ -1,4 +1,3 @@
-#load("data/joint_cortex/cortex_prep.Rda")
 # --------------------------Tab1-cytoscape network visualization----------------------------------------------
 # function to create network
 
@@ -45,6 +44,9 @@ create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
     .[[1]]
   
   nodeData <- nodeData %>%
+    # you can customize the color using the case_when structure easily,
+    # check the tfs in id column that exist in your vector, then you can control its size,
+    # shape and color easily
     mutate(color = case_when(id %in% tf ~ "#9d4097", # orange
                              # orange nodes are tfs that are active in this region
                              id %in% pathway_genes ~ "green",
