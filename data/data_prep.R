@@ -98,13 +98,6 @@ TF_and_ext_pon <- identify_tf(TF_active_pon)
 timeseries_input_meta_pons <- create_metadata_timeseries(pons_data,"pons") %>%
   filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
 # filter out the extra cell
-
-
-# metadata specific for each cell, corresponding to the activity data
-#cell_metadata_pon_prep <- read_tsv("joint_pons/joint_pons.metadata.tsv")
-# # 
-#cell_metadata_pon <- create_cell_metadata_pon(cell_metadata_pon_prep) %>%
-#    filter(Cell != "___po_e12_TACGGGCGTCAAGCGA")
 # remove the extra line to make the number of cells the same as the binary activity pon data
 # to correctly make the timeseires ribbon plot
 
