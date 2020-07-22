@@ -29,7 +29,10 @@ More details of functions of each tab will be shown later, with major aspects: u
 - add download buttons of plots
 
 
-## Final instructions to be added:  
+## Final instructions to be added: 
+- make the ggplot image from download smaller
+- lower the height of
+- debug the cytoscape network, remove the "stop showing"
 - data structures: how I save all the data of different brain regions...
 - rintrojs: 
   - sidebar first,   
