@@ -35,7 +35,7 @@ server <- function(input, output, session) {
     }
     else if(input$region == "pons"){
       l <- data_pons
-      }
+    }
     
     l$tf <- input$TF
     l$region <- input$region
@@ -63,9 +63,14 @@ server <- function(input, output, session) {
       
     })
   
+    TF_gene_datatable <- reactive({
+      datatable(dplyr::filter(input_new()$TF_target_gene_info, TF %in% input_new()$tf))
+    })
+  
     output$table <- renderDataTable({
         # process data, filter the lines with our interested TF
-      datatable(dplyr::filter(input_new()$TF_target_gene_info, TF %in% input_new()$tf))
+      TF_gene_datatable()
+      
     })
     
     
