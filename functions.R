@@ -5,9 +5,9 @@
 #' Create rcytoscape network data
 #' 
 #' Takes a vector input that contains user selected TFs and output a list of nodeData and edgeData
-#' which will be used for createCytoscapeJsNetwork
+#' which will be used for createCytoscapeJsNetwork()
 #' A good to visualize correlations among multiple TFs
-#' 
+#' use library(rcytoscapejs2) ,need to install from github, https://github.com/uc-bd2k/rcytoscapejs2
 #' @param tf one single tf name character
 #' @param TF_target_gene TF_target_gene data, specific for cortex/pon
 #' @param unique_TF unique_TF data, specific for cortex/pon
@@ -16,33 +16,38 @@
 #' 
 #' @examples 
 #' TF <- c("Arx","Lef1")
-#' # Note that TF_target_gene and unique_TF will be saved in data_cortex list, by data_prep.R
+#' #Note that TF_target_gene and unique_TF will be saved in data_cortex list, by data_prep.R
 #' nodeData <- create_network(TF, TF_target_gene_pon, unique_TF)$nodes
 #' edgeData <- create_network(TF, TF_target_gene_pon, unique_TF)$edges
 #' network <- createCytoscapeJsNetwork(nodeData, edgeData)
 #' rcytoscapejs2(network$nodes, network$edges)
 #' 
 create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
-                           shrink_gray = FALSE){ 
+                           shrink_gray = FALSE){
+  # fetch all the data(rows) in the TF target & genes data from your input list 
+  # filter by tf first
+  # TF_interest and gene_target should have same number in tital, since each TF corresponds to multiple genes
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
   
+  # point it to the standard colnames used in cytoscape network package, used in edgeData
   source <- TF_interest
   target <- gene_target
   
   id <- c(TF_interest, gene_target)
-  name <- id
+  name <- id # name is same as id
   nodeData <- data.frame(id,name, stringsAsFactors = FALSE)
   edgeData <- data.frame(source, target, stringsAsFactors = FALSE)
   
-  #unique_TF <- unique(TF_target_gene[["TF"]])
-  
+  # we find the mutual target can connected by more than one TF center node
   mutual_target <- edgeData %>% 
     # a character vector that indicates the nodes that are target of multiple selected TFs
     count(target) %>%
     filter(n > 1 & !target %in% tf ) %>%
     .[[1]]
   
+  # control the node, we can also change the edgeData, but it's not reflected visually,
+  # we only control the node for now
   nodeData <- nodeData %>%
     # you can customize the color using the case_when structure easily,
     # check the tfs in id column that exist in your vector, then you can control its size,

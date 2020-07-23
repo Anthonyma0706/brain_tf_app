@@ -302,7 +302,8 @@ library(pheatmap)
 - data: 4.TF_target_gene_info, 5. Activity per cluster, 6. Activity per cell
 - input: a transcription factor, chosen from (3. Active TF data) vector TF_active
 - output: 
-  1. A heatmap that, given a specific TF, we filter the activity_cluster datasets with this TF then display a heatmap that shows the level of activity featured by NES(score). You will see a gradient of color which makes a great straightforwad visualization.  
+  1. A heatmap that, given a specific TF, we filter the activity_cluster datasets with this TF then display a heatmap that shows the level of activity featured by NES(score). 
+  You will see a gradient of color which makes a great straightforwad visualization.  
   The x-axis correspond to each cluster.  
   
   
