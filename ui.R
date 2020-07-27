@@ -42,10 +42,11 @@ ui <- fluidPage(
                                     choices = c("show all nodes" = "all",
                                                 #"color by user's input tf list" = "pathway",
                                                 "shrink graynodes" = "shrink",
-                                                "neglect graynodes" = "neglect",
+                                                "neglect graynodes" = "neglect"
                                                 
-                                                "stop showing" = "stop"),
-                                    selected = "stop"),#,
+                                                #"stop showing" = "stop"
+                                                ),
+                                    selected = "all"),#,
                        checkboxInput("show_pathway","color by user's input genes list",
                                      TRUE),
                        selectInput("input_pathway", "input your interested genes pathway",
@@ -69,7 +70,9 @@ ui <- fluidPage(
                        #              value = 50),
                        checkboxGroupInput("method", "Plot by cluster or cells",
                                           choices = c("cluster" = "Cluster",
-                                                      "cell" = "Cell")             
+                                                      "cell" = "Cell"),
+                                          selected = c("cluster" = "Cluster",
+                                                       "cell" = "Cell")
                                           
                        )),
       # 3. time series plot
@@ -93,12 +96,15 @@ ui <- fluidPage(
         tabPanel(
           title = "table and network",
           textOutput("general_desc"),
+          tags$style(type="text/css", "#general_desc {white-space: pre-wrap;}"),
           introBox(
           
           dataTableOutput("table"),
           data.step = 3,
-          data.intro = "Table and network tab: 
-        A table of tf and its target gene with motifs and other information"
+          data.intro = " 
+          Tab 1 (tf and gene datatable and network graph): 
+          1. A table of tf and its target gene with motifs and other information
+          "
           ),
           introBox(
             data.intro = "Feel free to quit the intro now, click the 'show all nodes' button
@@ -107,8 +113,8 @@ ui <- fluidPage(
           ),
           
           
-          textOutput("desc"),
-          tags$style(type="text/css", "#desc {white-space: pre-wrap;}"),
+          textOutput("desc_network"),
+          tags$style(type="text/css", "#desc_network {white-space: pre-wrap;}"),
           introBox(
           rcytoscapejsOutput("network", width = "1200px",height = "600px"),
           data.step = 5,
@@ -119,6 +125,8 @@ ui <- fluidPage(
           Green nodes are your input genes related to input tfs(purple nodes)
           ;  grey nodes are other genes."
           ),
+          dataTableOutput("table_mutual_target"),
+          
           value = "table and network"
         ),
         
@@ -129,8 +137,11 @@ ui <- fluidPage(
                
                plotOutput("heatmap_cell"),
                downloadButton("download_hm_cell", "Heatmap by cell (Png)"),
+               downloadButton("download_hm_cell_pdf", "Heatmap by cell (Pdf)"),
                plotOutput("heatmap_cluster"),
                downloadButton("download_hm_cluster", "Heatmap by cluster (Png)"),
+               
+               
                imageOutput("color_hm_palette", width = "6in", height = "4in"),
                
                fluidRow(
