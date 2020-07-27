@@ -42,6 +42,8 @@ server <- function(input, output, session) {
     l$input_pathway <- input$input_pathway
     l$method <- input$method
     l$num_cell_plot <- input$num_cell_plot
+    
+    l$show <- input$show
     # l has following elements with same names for both options above:
     # l contains ...
     
@@ -54,12 +56,17 @@ server <- function(input, output, session) {
   # -----------------------------Tab1:table and network------------------------------------------
     output$general_desc <- renderText({
       "This app designs for displaying transcription factor and gene data from mice brain (cortex & pons part) in various fancy ways by three main tabs;
-                                             
-       PROBLEM: There are some transcription factors from your input that may not have the corresponding data
-       in the following tabs. (Sometimes you may not see the information of that transcription factor or the plot
-       is not updated, etc. That is unfortunately because of the lack of data in the cell activity data in tab2,
-       or the binary cell activity data in tab3.  
-   "
+      
+       Tab 1 (tf and gene datatable and network graph): 
+       Given a list of TFs, display a table of those TFs with their inferred target genes, 
+       Normalized Enrichment Score (NES) representing the activity level, motifs, etc. 
+       Secondly, based the same gene regulatory network, a network graph visualization displaying the TF and targets, where overlaps in targets of different TFs can be visualized easily. 
+       Color and size of nodes designate different types of genes. Genes (nodes) which are part of a user-defined list can also be coloured to highlight members of a pathway.
+       
+       Missing data note: that there are some transcription factors from your input that may not have the corresponding data in the following tabs. 
+       Missing data of those tfs mean that they're not active in the timepoints during the collection of data.
+       (Sometimes you may not see the information of that transcription factor or the plot is not updated, etc. 
+       That is unfortunately because of the lack of data in the cell activity data in tab2, or the binary cell activity data in tab3. "
       
     })
   
@@ -74,46 +81,97 @@ server <- function(input, output, session) {
     })
     
     
-    output$desc <- renderText({
+    output$desc_network <- renderText({
       text <- "\n  Orange nodes are active transcription factors (tf genes that express their own tf);
 Purple nodes in the center are your input transcription factors;
 Green nodes are your input genes related to input tfs(purple nodes);
 grey nodes are other genes."
     })
-    nodeData <- reactive(
-      #input$show,
-      {
-
-      if(input$show_pathway){input_pathway <- input_new()$input_pathway}
-      else{input_pathway <- c()}
+    
+    # nodeData <- reactive(
+    #   
+    #   {
+    # 
+    #   if(input$show_pathway){input_pathway <- input_new()$input_pathway}
+    #   else{input_pathway <- c()}
+    #   
+    #   if(input$show == "all"){
+    #     create_network(input_new()$tf, input_new()$TF_target_gene_info,
+    #                    input_new()$unique_active_TFs_bare,
+    #                    pathway_genes = input_pathway)$nodes
+    #   }
+    #   else if(input$show == "neglect"){
+    #     create_network(input_new()$tf, input_new()$TF_target_gene_info,
+    #                    input_new()$unique_active_TFs_bare,
+    #                    pathway_genes = input_pathway)$nodes %>%
+    #       filter(color!="lightgrey")
+    #   }
+    #   else if(input$show == "shrink"){
+    #     create_network(input_new()$tf, input_new()$TF_target_gene_info,
+    #                    input_new()$unique_active_TFs_bare,
+    #                    pathway_genes = input_pathway,
+    #                    shrink_gray = TRUE)$nodes
+    #   }
+    #     
+    # })
+    
+    network_list <- reactive(
       
-      if(input$show == "all"){
-        create_network(input_new()$tf, input_new()$TF_target_gene_info,
-                       input_new()$unique_active_TFs_bare,
-                       pathway_genes = input_pathway)$nodes
-      }
-      else if(input$show == "neglect"){
-        create_network(input_new()$tf, input_new()$TF_target_gene_info,
-                       input_new()$unique_active_TFs_bare,
-                       pathway_genes = input_pathway)$nodes %>%
-          filter(color!="lightgrey")
-      }
-      else if(input$show == "shrink"){
-        create_network(input_new()$tf, input_new()$TF_target_gene_info,
-                       input_new()$unique_active_TFs_bare,
-                       pathway_genes = input_pathway,
-                       shrink_gray = TRUE)$nodes
-      }
+      {
         
-    })
+        if(input$show_pathway){input_pathway <- input_new()$input_pathway}
+        else{input_pathway <- c()}
+        
+        list_return <- c()
+        
+        if(input_new()$show == "all"){
+          list_return <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                         input_new()$unique_active_TFs_bare,
+                         pathway_genes = input_pathway)
+        }
+        else if(input_new()$show == "neglect"){
+          list_return <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                         input_new()$unique_active_TFs_bare,
+                         pathway_genes = input_pathway)
+          
+          list_return$nodes <- list_return$nodes %>%
+            filter(color!="lightgrey")
+        }
+        else if(input_new()$show == "shrink"){
+          list_return <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
+                         input_new()$unique_active_TFs_bare,
+                         pathway_genes = input_pathway,
+                         shrink_gray = TRUE)
+        }
+        
+        return(list_return)
+        
+      })
+    
+    # output$network <- renderRcytoscapejs({
+    #   req(nodeData())
+    #   nodeData <- nodeData()
+    #   edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
+    #                              input_new()$unique_active_TFs_bare)$edges
+    #   network <- createCytoscapeJsNetwork(nodeData, edgeData)
+    #   rcytoscapejs2(network$nodes, network$edges)
+    # 
+    # })
+    
     output$network <- renderRcytoscapejs({
-      req(nodeData())
-      nodeData <- nodeData()
-      edgeData <- create_network(input_new()$tf, input_new()$TF_target_gene_info,
-                                 input_new()$unique_active_TFs_bare)$edges
+      req(network_list())
+      
+      nodeData <- network_list()$nodes
+      edgeData <- network_list()$edges
       network <- createCytoscapeJsNetwork(nodeData, edgeData)
       rcytoscapejs2(network$nodes, network$edges)
- 
+      
+    })
+    
+    output$table_mutual_target <- renderDataTable({
+      # process data, filter the lines with our interested TF
+      DT::datatable(tibble(mutual_target = network_list()$mutual_target))
+      
     })
     
     
@@ -151,6 +209,20 @@ grey nodes are other genes."
                                                  ggsave(filename = file, plot = hm_cell_plot(),
                                                         width = 20, height = 25)
                                                })
+    
+    output$download_hm_cell_pdf <- downloadHandler(
+      filename = "heatmap_cell.pdf",
+      
+      content = function(file){
+        cairo_pdf(filename = file,
+                  width = 18, height = 10, pointsize = 12, family = "sans", bg = "transparent",
+                  antialias = "subpixel",fallback_resolution = 300)
+        hm_cell_plot()
+        dev.off()
+      },
+      
+      contentType = "application/pdf"
+    )
     
     output$heatmap_cluster <- renderPlot({
       hm_cluster_plot()        
