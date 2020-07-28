@@ -11,7 +11,10 @@
 #' @param tf one single tf name character
 #' @param TF_target_gene TF_target_gene data, specific for cortex/pon
 #' @param unique_TF unique_TF data, specific for cortex/pon
-#'
+#' @param pathway_genes a character vector of genes, we color them existing in the graph in green
+#' @param shrink_gray a boolean, we use this boolean to control either shrink the gray nodes or not
+#' to visualize better
+#' 
 #' @return a list of nodeData and edgeData that are required for generating a rcytoscapejs network object
 #' 
 #' @examples 
@@ -73,7 +76,8 @@ create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
   }
   
   return(list(nodes = nodeData,
-              edges = edgeData
+              edges = edgeData,
+              mutual_target = mutual_target
   ))
 }
 # ------------------------------------------------------------------------------------
