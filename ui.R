@@ -97,15 +97,7 @@ ui <- fluidPage(
           title = "table and network",
           textOutput("general_desc"),
           tags$style(type="text/css", "#general_desc {white-space: pre-wrap;}"),
-          introBox(
           
-          dataTableOutput("table"),
-          data.step = 3,
-          data.intro = " 
-          Tab 1 (tf and gene datatable and network graph): 
-          1. A table of tf and its target gene with motifs and other information
-          "
-          ),
           introBox(
             data.intro = "Feel free to quit the intro now, click the 'show all nodes' button
             in the sidebar to see the cytoscape network graph, then we continue",
@@ -126,6 +118,15 @@ ui <- fluidPage(
           ;  grey nodes are other genes."
           ),
           dataTableOutput("table_mutual_target"),
+          introBox(
+            
+            dataTableOutput("table"),
+            data.step = 3,
+            data.intro = " 
+          Tab 1 (tf and gene datatable and network graph): 
+          1. A table of tf and its target gene with motifs and other information
+          "
+          ),
           
           value = "table and network"
         ),

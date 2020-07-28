@@ -203,8 +203,8 @@ grey nodes are other genes."
       hm_cell_plot()
     })
     
-    output$download_hm_cell <- downloadHandler(filename = "heatmap_cell.png",
-                                               contentType = "image/png",
+    output$download_hm_cell <- downloadHandler(filename = "heatmap_cell.pdf",
+                                               contentType = "image/pdf",
                                                content = function(file){
                                                  ggsave(filename = file, plot = hm_cell_plot(),
                                                         width = 20, height = 25)
