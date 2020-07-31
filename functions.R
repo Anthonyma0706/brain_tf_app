@@ -30,6 +30,8 @@ create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
   # fetch all the data(rows) in the TF target & genes data from your input list 
   # filter by tf first
   # TF_interest and gene_target should have same number in tital, since each TF corresponds to multiple genes
+  # these two variables correspond to a set of two columns(TF, gene) with the TF you have
+  # feel free to see what they look like to understand the data structure   
   TF_interest <- filter(TF_target_gene, TF %in% tf)[["TF"]]
   gene_target <- filter(TF_target_gene, TF %in% tf)[["gene"]]
   
@@ -84,7 +86,8 @@ create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
 #' Identify transcription factor data type
 #' 
 #' Generate a tibble that has two columns indicating whether the tf has ext type,
-#' the ext column labels whether that data is ext type
+#' the ext column labels whether that data is ext type, important df will be used later as 
+#' an identifier of tf
 #'
 #' @param TF_name_activity_tibble a dataframe/tibble that saves all names of transcription 
 #' factor with suffix ext and weights
@@ -102,8 +105,7 @@ create_network <- function(tf, TF_target_gene, unique_TF, pathway_genes = c(),
 #' to help retrieve the correct TF name to be used in other dataframes(tf activity in cell..)
 #' 
 #' @examples 
-#' TF_active <- as_tibble(read_rds("data/joint_cortex/joint_cortex.active_regulons.Rds"))
-#' TF_and_ext <- identify_tf(TF_active)
+#' TF_and_ext <- identify_tf(data_cortex$active_TFs)
 #' 
 identify_tf <- function(TF_name_activity_tibble){
   TF_name_activity_tibble %>% 
@@ -115,9 +117,10 @@ identify_tf <- function(TF_name_activity_tibble){
     select(name, type, ext)
 }
 
-#' has_regular, has_ext
+#' check the tf type
 #' 
-#' Boolean functions that determine the identity of TF data in the activity datasets
+#' Boolean functions that determine the identity of TF data in the activity datasets using
+#' TF_and_ext data(generated using identify_tf)
 #'
 #' @param TF character vector, containing one or more TF names
 #' @param TF_and_ext The dataframe/tibble generated using identify_tf, that has three cols:
@@ -140,7 +143,7 @@ has_ext <- function(TF, TF_and_ext){
   nrow(is_ext)!=0
 }
 
-#' tf_exist
+#' check if the tf exist
 #' 
 #' This function also uses TF_and_ext, loaded in data_prep.R, can also generate using identify_tf
 #' 
@@ -160,14 +163,14 @@ has_ext <- function(TF, TF_and_ext){
 tf_exist <- function(TF, TF_and_ext){
   for(tf in TF){
     if(has_regular(tf, TF_and_ext) || has_ext(tf, TF_and_ext)){}
-    else{return (tf)} # or regurn FALSE
+    else{return (tf)} # or return FALSE
   }
   return (TRUE)
 }
 
-# read the corresponding data by tf's identity
 
-#' tf_regular, tf_ext
+
+#' read the corresponding data by tf's identity
 #'
 #' @param TF character vector, containing one or more TF names
 #' @param TF_and_ext The dataframe/tibble generated using identify_tf, that has three cols:
