@@ -26,12 +26,6 @@ ui <- fluidPage(
                   choices = data_cortex$unique_active_TFs_bare,
                   multiple = TRUE,
                   selected = c("Arx","Lef1")),
-      # fileInput("file_tf", "Choose CSV File containing your tf list",
-      #           accept = c(
-      #             "text/csv",
-      #             "text/comma-separated-values,text/plain",
-      #             ".csv")
-      # ),
       
       # 1. table and network graph of related TF and genes
       
@@ -47,18 +41,18 @@ ui <- fluidPage(
                                                 #"stop showing" = "stop"
                                                 ),
                                     selected = "all"),#,
-                       checkboxInput("show_pathway","color by user's input genes list",
+                       checkboxInput("show_pathway","color by user's input genes column",
                                      TRUE),
                        selectInput("input_pathway", "input your interested genes pathway",
                                    choices = data_cortex$unique_active_TFs_bare,
                                    multiple = TRUE,
-                                   selected = c("Arx","Lef1"))
-                       # fileInput("file_gene", "Choose CSV File containing your genes list",
-                       #           accept = c(
-                       #             "text/csv",
-                       #             "text/comma-separated-values,text/plain",
-                       #             ".csv")
-                       # )
+                                   selected = c("Arx","Lef1")),
+                       fileInput("file_gene", "Choose CSV File containing your gene column as input",
+                                 accept = c(
+                                   "text/csv",
+                                   "text/comma-separated-values,text/plain",
+                                   ".csv")
+                       )
                        #actionButton("update_graph", label = "See the network graph")
       
        ),
@@ -74,7 +68,11 @@ ui <- fluidPage(
                                           selected = c("cluster" = "Cluster",
                                                        "cell" = "Cell")
                                           
-                       )),
+                       ),
+                       numericInput("hm_width", label = "width of heatmap picture to download", value = 18),
+                       numericInput("hm_height", label = "height of heatmap picture to download", value = 12),
+                
+                       ),
       # 3. time series plot
       conditionalPanel(condition = "input.tabs == 'time series'"),
       
@@ -118,6 +116,7 @@ ui <- fluidPage(
           ;  grey nodes are other genes."
           ),
           dataTableOutput("table_mutual_target"),
+          dataTableOutput("input_gene_list"),
           introBox(
             
             dataTableOutput("table"),
@@ -141,6 +140,7 @@ ui <- fluidPage(
                downloadButton("download_hm_cell_pdf", "Heatmap by cell (Pdf)"),
                plotOutput("heatmap_cluster"),
                downloadButton("download_hm_cluster", "Heatmap by cluster (Png)"),
+               downloadButton("download_hm_cluster_pdf", "Heatmap by cluster (Pdf)"),
                
                
                imageOutput("color_hm_palette", width = "6in", height = "4in"),
