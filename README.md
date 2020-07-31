@@ -12,6 +12,7 @@ This shiny app displays transcription factor activity inference data from a deve
 ## Features
 - The first tab generates a **cytoscape network graph**, displaying the input TFs, their target genes, the mutual target gene and gene pathway analysis. 
 We color the input genes related to input tfs(purple nodes) in green. Further demonstration in terms of how to generate and manipulate the data required in the cytoscape network code is in the app_description.Rmd(html) file in this repository.
+- we use **plotly** package to make interactive plots using ggplot2 object in tab3, with fancy features such as hovering over the plot to see information and double click the color palatte of cell types at the right side to display that cell type ONLY,etc.
 
 ## Structure  
 ### data
@@ -20,7 +21,7 @@ Tab 1 and Tab 2 use more general data for cancer, so they can also apply to stan
 check out <https://github.com/fungenomics/TF_explorer_app> for a more general use and data transformation of tab1 and tab2 functionality using standard cancer sample data format.  
 ### User input and missing data  
 User needs to select the region first, and then select the transcription factors. Same tf list will be used throught out the whole tab. 
-However, sometimes you may see some tfs are on display in some tabs only (may not see the information of that transcription factor or the plot is not updated, etc.) This is because some transcription factors from your input may not have the corresponding data in the some tabs. Missing data of those tfs mean that they're not active in the timepoints during the collection of data.  
+However, sometimes you may see some tfs are on display in some tabs only (may not see the information of that tf or the plot is not updated, etc.) This is because some transcription factors from your input may not have the corresponding data in the some tabs. Missing data of those tfs means that they're not active in the timepoints during the collection of data.  
 This app doesn't provide any error message if the tf data is empty.
 ### data structure
 We generate all the data in data_prep.R which saves a list like this for each brain region:
@@ -38,6 +39,13 @@ We generate all the data in data_prep.R which saves a list like this for each br
 where all the names in the list will be the same for data_cortex and data_pons.
 At the beginning of the app, we load those datasets as list, then based on the region selected by user, the corresponding dataset is assigned to the input_new() list in server.R,
 which will be updated by the update button, see server.R for more details.
+### central dogma of retrieving information in datasets using TF input list  
+In this app you might see **TF_and_ext** (dataframe) a lot throughout the functions.R used in the app (tab2, tab3), this is due to the different format of tf in the  datasets we have.
+In tf_regulons data(the table on display in tab 1) all the tfs are raw (ex. Arx, Lef1), without any confidence annotation. While in cell activity data and timeseries data in tab2 and tab3, all tfs have suffix ext and weights (E2f1_extended (133g) and E2f1 (122g)) *tf with no '_extended' attached on are those with high confidence annotation; tf with extended are those with relatively low confidence annotation*
+The point is to use the high annotation data(regular TF type) if we have it; if not, we use the ext type tf data; If we have no data related to this tf, we will do nothing (not display it in the app).
+There are multiple functions to identify the tf type we have in the data, retrieve the data and so on. For instance, **TF_and_ext** is produced using one of the functions, it has columns of value and type that can be understood as booleans, which will be used later to identify the tf annotation type.
+
+
 
 
 
