@@ -23,7 +23,7 @@ User needs to select the region first, and then select the transcription factors
 However, sometimes you may see some tfs are on display in some tabs only (may not see the information of that transcription factor or the plot is not updated, etc.) This is because some transcription factors from your input may not have the corresponding data in the some tabs. Missing data of those tfs mean that they're not active in the timepoints during the collection of data.  
 This app doesn't provide any error message if the tf data is empty.
 ### data structure
-We generate all the data in data_prep.R which saves a list like this:
+We generate all the data in data_prep.R which saves a list like this for each brain region:
 *data_cortex <- list(
   "cell_metadata"  = forebrain_data,
   "TF_and_ext" = TF_and_ext,
