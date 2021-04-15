@@ -1,4 +1,5 @@
 # brain_TF_app
+This is the shiny app developed by 2020.08.01 for Kleinman lab.
 ## About  
 This shiny app displays transcription factor activity inference data from a developmental timecourse of the mouse forebrain and pons in three main tabs including:
 
