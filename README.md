@@ -1,5 +1,5 @@
 # brain_tf_app
-This is a shiny app project developed by 2020.08.01.
+This is a shiny app project developed for Kleinman Lab at lady davis institute by 2020.08.01. This repository is only for th demonstration.
 ## About  
 This shiny app displays transcription factor activity inference data from a developmental timecourse of the mouse forebrain and pons in three main tabs including:
 
